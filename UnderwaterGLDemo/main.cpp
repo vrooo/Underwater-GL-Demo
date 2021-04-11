@@ -3,21 +3,21 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+const int WINDOW_WIDTH = 1600;
+const int WINDOW_HEIGHT = 900;
+
 int main()
 {
-	const int width = 1600;
-	const int height = 900;
-
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_RESIZABLE, 0);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	GLFWwindow* window = glfwCreateWindow(width, height, "Test", NULL, NULL);
-	if (window == NULL)
+	GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Underwater Demo", nullptr, nullptr);
+	if (window == nullptr)
 	{
-		std::cout << "Failed to create window\n";
+		std::cout << "ERROR: Failed to create window\n";
 		glfwTerminate();
 		return -1;
 	}
@@ -25,11 +25,13 @@ int main()
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		std::cout << "Failed to initialize GLAD\n";
+		std::cout << "ERROR: Failed to initialize GLAD\n";
 		return -1;
 	}
 
-	glViewport(0, 0, width, height);
+	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+	std::cout << "Initiailization completed\n";
 
 	while (!glfwWindowShouldClose(window))
 	{
