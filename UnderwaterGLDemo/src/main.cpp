@@ -3,6 +3,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "Rendering/Mesh.h"
+#include "Rendering/Shader.h"
+
 const int WINDOW_WIDTH = 1600;
 const int WINDOW_HEIGHT = 900;
 
@@ -31,10 +34,23 @@ int main()
 
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	std::cout << "Initiailization completed\n";
+	Mesh mesh{};
+
+	// TODO: move shader creation to renderer
+#pragma region Shader creation
+	Shader passShader{"assets/shaders/pass.vert", "assets/shaders/pass.frag"};
+#pragma endregion
+
+	std::cout << "Initialization completed\n";
 
 	while (!glfwWindowShouldClose(window))
 	{
+		glClearColor(0.3f, 0.4f, 0.6f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		passShader.Use();
+		mesh.Render();
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}

@@ -6,7 +6,7 @@ class Shader
 public:
 	unsigned int ID;
 
-	Shader(const char* vertPath, const char* fragPath);
+	Shader(const char* vertPath, const char* fragPath); // catch std::exception const&
 	void Use();
 	void SetInt(const char* name, int value);
 	void SetFloat(const char* name, float value);

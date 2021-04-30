@@ -1,6 +1,6 @@
-#include "Renderer.h"
-
-void Renderer::Init(const char* shaderDir)
-{
-
-}
+//#include "Renderer.h"
+//
+//void Renderer::Init()
+//{
+//
+//}
