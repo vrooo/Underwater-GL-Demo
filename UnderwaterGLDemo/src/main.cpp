@@ -2,12 +2,22 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "Rendering/Mesh.h"
 #include "Rendering/Shader.h"
+#include "Rendering/Renderer.h"
 
 const int WINDOW_WIDTH = 1600;
 const int WINDOW_HEIGHT = 900;
+const float CAM_MOVE_SPEED = 0.02f;
+const float CAM_ROTATE_SPEED = 0.1f;
+
+float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
+
+void ProcessKeyboard(GLFWwindow* window);
+void ProcessMouse(GLFWwindow* window, double posX, double posY);
 
 int main()
 {
@@ -34,22 +44,26 @@ int main()
 
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	Mesh mesh{};
+	float planeSize = 50.0f;
+	unsigned int planeGrid = 10;
+	Mesh plane = Mesh::MakeXZPlane(planeSize, planeSize, planeGrid, planeGrid);
 
-	// TODO: move shader creation to renderer
-#pragma region Shader creation
-	Shader passShader{"assets/shaders/pass.vert", "assets/shaders/pass.frag"};
-#pragma endregion
+	Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	std::cout << "Initialization completed\n";
+	glfwSetCursorPosCallback(window, ProcessMouse);
+
+	std::cout << "Initialization complete\n";
 
 	while (!glfwWindowShouldClose(window))
 	{
-		glClearColor(0.3f, 0.4f, 0.6f, 1.0f);
+		ProcessKeyboard(window);
+
+		glClearColor(0.9f, 0.8f, 0.6f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		passShader.Use();
-		mesh.Render();
+		Renderer::UseShader(ShaderMode::Basic);
+
+		plane.Render();
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -57,4 +71,44 @@ int main()
 
 	glfwTerminate();
 	return 0;
+}
+
+void ProcessKeyboard(GLFWwindow* window)
+{
+	float forward = 0.0f, right = 0.0f, up = 0.0f;
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+	{
+		forward += CAM_MOVE_SPEED;
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+	{
+		forward -= CAM_MOVE_SPEED;
+	}
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+	{
+		right += CAM_MOVE_SPEED;
+	}
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+	{
+		right -= CAM_MOVE_SPEED;
+	}
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+	{
+		up += CAM_MOVE_SPEED;
+	}
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+	{
+		up -= CAM_MOVE_SPEED;
+	}
+	Renderer::TranslateCamera(forward, right, up);
+}
+
+void ProcessMouse(GLFWwindow* window, double posX, double posY)
+{
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT))
+	{
+		Renderer::RotateCamera(CAM_ROTATE_SPEED * (lastY - posY), CAM_ROTATE_SPEED * (posX - lastX));
+	}
+	lastX = posX;
+	lastY = posY;
 }

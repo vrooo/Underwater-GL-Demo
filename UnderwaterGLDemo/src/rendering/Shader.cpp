@@ -4,6 +4,8 @@
 #include <sstream>
 #include <string>
 
+#include <glm/gtc/type_ptr.hpp>
+
 const int INFO_LOG_SIZE = 512;
 
 Shader::Shader(const char* vertPath, const char* fragPath)
@@ -67,4 +69,29 @@ void Shader::SetInt(const char* name, int value)
 void Shader::SetFloat(const char* name, float value)
 {
 	glUniform1f(glGetUniformLocation(ID, name), value);
+}
+
+void Shader::SetVec3(const char* name, float x, float y, float z)
+{
+	glUniform3f(glGetUniformLocation(ID, name), x, y, z);
+}
+
+void Shader::SetVec3(const char* name, glm::vec3& vec)
+{
+	glUniform3fv(glGetUniformLocation(ID, name), 1, glm::value_ptr(vec));
+}
+
+void Shader::SetVec4(const char* name, float x, float y, float z, float w)
+{
+	glUniform4f(glGetUniformLocation(ID, name), x, y, z, w);
+}
+
+void Shader::SetVec4(const char* name, glm::vec4& vec)
+{
+	glUniform4fv(glGetUniformLocation(ID, name), 1, glm::value_ptr(vec));
+}
+
+void Shader::SetMat4(const char* name, glm::mat4& mat)
+{
+	glUniformMatrix4fv(glGetUniformLocation(ID, name), 1, GL_FALSE, glm::value_ptr(mat));
 }
