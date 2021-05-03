@@ -5,18 +5,21 @@
 Shader* Renderer::current = nullptr;
 std::vector<Shader> Renderer::shaders{};
 
+glm::vec3 Renderer::sceneBoundary{};
+
 glm::mat4 Renderer::P{ 0.1f };
-glm::vec3 Renderer::cameraPos{ 0.0f, 2.0f, -5.0f };
+glm::vec3 Renderer::cameraPos{ 0.0f, 2.0f, 20.0f };
 glm::vec3 Renderer::cameraUp{ 0.0f, 1.0f, 0.0f };
-glm::vec3 Renderer::cameraForward{ 0.0f, 0.0f, 1.0f };
+glm::vec3 Renderer::cameraForward{ 0.0f, 0.0f, -1.0f };
 float Renderer::cameraPitch = 0.0f;
 float Renderer::cameraYaw = 0.0f;
 
 const float FOV = glm::half_pi<float>();
 const float Z_NEAR = 0.1f, Z_FAR = 100.0f;
 
-void Renderer::Init(float width, float height)
+void Renderer::Init(float width, float height, glm::vec3 boundary)
 {
+	sceneBoundary = boundary;
 	P = glm::perspectiveFov(FOV, width, height, Z_NEAR, Z_FAR);
 
 	shaders.push_back(Shader{ "assets/shaders/pass.vert", "assets/shaders/pass.frag" });	// ShaderMode::PassThrough
@@ -37,15 +40,19 @@ void Renderer::TranslateCamera(float forward, float right, float up)
 {
 	cameraPos += forward * cameraForward + right * glm::normalize(glm::cross(cameraForward, cameraUp));
 	cameraPos.y += up;
+	cameraPos = glm::clamp(cameraPos, -sceneBoundary, sceneBoundary);
 }
 
 void Renderer::RotateCamera(float pitch, float yaw)
 {
 	cameraPitch = glm::clamp(cameraPitch + pitch, -89.0f, 89.0f);
-	cameraYaw += yaw;
-	cameraForward.x = cos(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch));
-	cameraForward.y = sin(glm::radians(cameraPitch));
-	cameraForward.z = sin(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch));
+	cameraYaw = glm::mod(cameraYaw + yaw, 360.0f);
+	float yawRad = glm::radians(cameraYaw);
+	float pitchRad = glm::radians(cameraPitch);
+
+	cameraForward.x = cos(yawRad) * cos(pitchRad);
+	cameraForward.y = sin(pitchRad);
+	cameraForward.z = sin(yawRad) * cos(pitchRad);
 	cameraForward = glm::normalize(cameraForward);
 }
 

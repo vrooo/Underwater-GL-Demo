@@ -11,7 +11,9 @@
 
 const int WINDOW_WIDTH = 1600;
 const int WINDOW_HEIGHT = 900;
-const float CAM_MOVE_SPEED = 0.02f;
+const float SCENE_SIZE = 50.0f;
+const float SCENE_HEIGHT = 20.0f;
+const float CAM_MOVE_SPEED = 0.01f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
@@ -44,11 +46,10 @@ int main()
 
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	float planeSize = 50.0f;
 	unsigned int planeGrid = 10;
-	Mesh plane = Mesh::MakeXZPlane(planeSize, planeSize, planeGrid, planeGrid);
+	Mesh plane = Mesh::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, planeGrid, planeGrid);
 
-	Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT);
+	Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT, glm::vec3{SCENE_SIZE / 2, SCENE_HEIGHT, SCENE_SIZE / 2});
 
 	glfwSetCursorPosCallback(window, ProcessMouse);
 

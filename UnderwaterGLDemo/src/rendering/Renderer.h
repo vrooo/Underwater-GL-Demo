@@ -16,7 +16,7 @@ enum class ShaderMode
 class Renderer
 {
 public:
-	static void Init(float width, float height);
+	static void Init(float width, float height, glm::vec3 boundary);
 	static void UseShader(ShaderMode mode);
 
 	static void SetInt(const char* name, int value);
@@ -33,6 +33,8 @@ public:
 private:
 	static Shader* current; // TODO: this is ugly
 	static std::vector<Shader> shaders;
+
+	static glm::vec3 sceneBoundary;
 
 	static glm::mat4 P;
 	static glm::vec3 cameraPos;
