@@ -10,7 +10,8 @@
 enum class ShaderMode
 {
 	PassThrough,
-	Basic
+	Basic,
+	Surface
 };
 
 class Renderer

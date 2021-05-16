@@ -8,53 +8,47 @@
 
 const int INFO_LOG_SIZE = 512;
 
-Shader::Shader(const char* vertPath, const char* fragPath)
+// helper functions - declarations
+int AttachShader(int id, const char* path, GLenum shaderType, int& success, char* infoLog);
+void LinkProgram(int id, int& success, char* infoLog);
+
+// class methods
+Shader Shader::CreateShaderVF(const char* vertPath, const char* fragPath)
 {
 	int success;
 	char infoLog[INFO_LOG_SIZE];
-	int vertShader = CompileShader(vertPath, GL_VERTEX_SHADER, &success, infoLog);
-	int fragShader = CompileShader(fragPath, GL_FRAGMENT_SHADER, &success, infoLog);
+	int id = glCreateProgram();
 
-	ID = glCreateProgram();
-	glAttachShader(ID, vertShader);
-	glAttachShader(ID, fragShader);
-	glLinkProgram(ID);
-	glGetProgramiv(ID, GL_LINK_STATUS, &success);
-	if (!success)
-	{
-		glGetProgramInfoLog(ID, INFO_LOG_SIZE, nullptr, infoLog);
-		throw std::runtime_error(infoLog);
-	}
+	int vertShader = AttachShader(id, vertPath, GL_VERTEX_SHADER, success, infoLog);
+	int fragShader = AttachShader(id, fragPath, GL_FRAGMENT_SHADER, success, infoLog);
+
+	LinkProgram(id, success, infoLog);
 
 	glDeleteShader(vertShader);
 	glDeleteShader(fragShader);
-}
 
-int Shader::CompileShader(const char* path, GLenum shaderType, int* success, char* infoLog)
+	return Shader{ id };
+}
+Shader Shader::CreateShaderVGF(const char* vertPath, const char* geomPath, const char* fragPath)
 {
-	std::ifstream fileStream;
-	fileStream.exceptions(std::ifstream::badbit | std::ifstream::failbit);
-	fileStream.open(path);
+	int success;
+	char infoLog[INFO_LOG_SIZE];
+	int id = glCreateProgram();
 
-	std::ostringstream stringStream;
-	stringStream << fileStream.rdbuf();
-	fileStream.close();
+	int vertShader = AttachShader(id, vertPath, GL_VERTEX_SHADER, success, infoLog);
+	int geomShader = AttachShader(id, geomPath, GL_GEOMETRY_SHADER, success, infoLog);
+	int fragShader = AttachShader(id, fragPath, GL_FRAGMENT_SHADER, success, infoLog);
 
-	auto shaderString = stringStream.str();
-	auto shaderCode = shaderString.c_str();
+	LinkProgram(id, success, infoLog);
 
-	unsigned int shader = glCreateShader(shaderType);
-	glShaderSource(shader, 1, &shaderCode, nullptr);
-	glCompileShader(shader);
-	glGetShaderiv(shader, GL_COMPILE_STATUS, success);
-	if (!success)
-	{
-		glGetShaderInfoLog(shader, INFO_LOG_SIZE, nullptr, infoLog);
-		throw std::runtime_error(infoLog);
-	}
+	glDeleteShader(vertShader);
+	glDeleteShader(geomShader);
+	glDeleteShader(fragShader);
 
-	return shader;
+	return Shader{ id };
 }
+
+Shader::Shader(int id) : ID(id) {}
 
 void Shader::Use()
 {
@@ -94,4 +88,43 @@ void Shader::SetVec4(const char* name, glm::vec4& vec)
 void Shader::SetMat4(const char* name, glm::mat4& mat)
 {
 	glUniformMatrix4fv(glGetUniformLocation(ID, name), 1, GL_FALSE, glm::value_ptr(mat));
+}
+
+// helper functions - definitions
+int AttachShader(int id, const char* path, GLenum shaderType, int& success, char* infoLog)
+{
+	std::ifstream fileStream;
+	fileStream.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+	fileStream.open(path);
+
+	std::ostringstream stringStream;
+	stringStream << fileStream.rdbuf();
+	fileStream.close();
+
+	auto shaderString = stringStream.str();
+	auto shaderCode = shaderString.c_str();
+
+	unsigned int shader = glCreateShader(shaderType);
+	glShaderSource(shader, 1, &shaderCode, nullptr);
+	glCompileShader(shader);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		glGetShaderInfoLog(shader, INFO_LOG_SIZE, nullptr, infoLog);
+		throw std::runtime_error(infoLog);
+	}
+
+	glAttachShader(id, shader);
+	return shader;
+}
+
+void LinkProgram(int id, int& success, char* infoLog)
+{
+	glLinkProgram(id);
+	glGetProgramiv(id, GL_LINK_STATUS, &success);
+	if (!success)
+	{
+		glGetProgramInfoLog(id, INFO_LOG_SIZE, nullptr, infoLog);
+		throw std::runtime_error(infoLog);
+	}
 }

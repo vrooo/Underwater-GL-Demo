@@ -22,8 +22,9 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 	sceneBoundary = boundary;
 	P = glm::perspectiveFov(FOV, width, height, Z_NEAR, Z_FAR);
 
-	shaders.push_back(Shader{ "assets/shaders/pass.vert", "assets/shaders/pass.frag" });	// ShaderMode::PassThrough
-	shaders.push_back(Shader{ "assets/shaders/mvp.vert", "assets/shaders/pass.frag" });		// ShaderMode::Basic
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/pass.vert", "assets/shaders/pass.frag"));			// ShaderMode::PassThrough
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/mvp.vert", "assets/shaders/pass.frag"));			// ShaderMode::Basic
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surface.vert", "assets/shaders/surface.frag"));	// ShaderMode::Surface
 	UseShader(ShaderMode::PassThrough);
 }
 
@@ -33,7 +34,9 @@ void Renderer::UseShader(ShaderMode mode)
 	current->Use();
 	SetMat4("P", P);
 	glm::mat4 V = glm::lookAt(cameraPos, cameraPos + cameraForward, cameraUp); // TODO: cache
+	glm::mat4 invV = glm::inverse(V);
 	SetMat4("V", V);
+	SetMat4("invV", invV);
 }
 
 void Renderer::TranslateCamera(float forward, float right, float up)

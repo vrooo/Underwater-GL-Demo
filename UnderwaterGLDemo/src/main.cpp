@@ -16,6 +16,8 @@ const float SCENE_HEIGHT = 20.0f;
 const float CAM_MOVE_SPEED = 0.01f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
+const int WATER_GRID = 100;
+
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
 void ProcessKeyboard(GLFWwindow* window);
@@ -46,14 +48,39 @@ int main()
 
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	unsigned int planeGrid = 10;
-	Mesh plane = Mesh::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, planeGrid, planeGrid);
+	Mesh plane = Mesh::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, WATER_GRID, WATER_GRID);
 
-	Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT, glm::vec3{SCENE_SIZE / 2, SCENE_HEIGHT, SCENE_SIZE / 2});
+	try
+	{
+		Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT, glm::vec3{ SCENE_SIZE / 2, SCENE_HEIGHT, SCENE_SIZE / 2 });
+	}
+	catch(std::exception const& e)
+	{
+		std::cout << "ERROR: " << e.what() << "\n";
+		return -1;
+	}
 
 	glfwSetCursorPosCallback(window, ProcessMouse);
 
 	std::cout << "Initialization complete\n";
+
+	float waveData[WATER_GRID][WATER_GRID];
+	for (int i = 0; i < WATER_GRID; i++)
+	{
+		for (int j = 0; j < WATER_GRID; j++)
+		{
+			waveData[i][j] = 0.02f * (i % 4 - 2);
+		}
+	}
+
+	unsigned int waveTex;
+	glGenTextures(1, &waveTex);
+	glBindTexture(GL_TEXTURE_2D, waveTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, WATER_GRID, WATER_GRID, 0, GL_RED, GL_FLOAT, waveData);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -62,8 +89,8 @@ int main()
 		glClearColor(0.9f, 0.8f, 0.6f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		Renderer::UseShader(ShaderMode::Basic);
-
+		Renderer::UseShader(ShaderMode::Surface);
+		glBindTexture(GL_TEXTURE_2D, waveTex); // TODO
 		plane.Render();
 
 		glfwSwapBuffers(window);
