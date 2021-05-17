@@ -8,7 +8,7 @@ std::vector<Shader> Renderer::shaders{};
 glm::vec3 Renderer::sceneBoundary{};
 
 glm::mat4 Renderer::P{ 0.1f };
-glm::vec3 Renderer::cameraPos{ 0.0f, 2.0f, 20.0f };
+glm::vec3 Renderer::cameraPos{ 0.0f, 10.0f, 0.0f };
 glm::vec3 Renderer::cameraUp{ 0.0f, 1.0f, 0.0f };
 glm::vec3 Renderer::cameraForward{ 0.0f, 0.0f, -1.0f };
 float Renderer::cameraPitch = 0.0f;

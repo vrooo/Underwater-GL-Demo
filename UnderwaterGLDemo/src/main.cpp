@@ -1,4 +1,6 @@
 #include <iostream>
+#include <random>
+#include <vector>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -13,14 +15,14 @@ const int WINDOW_WIDTH = 1600;
 const int WINDOW_HEIGHT = 900;
 const float SCENE_SIZE = 50.0f;
 const float SCENE_HEIGHT = 20.0f;
-const float CAM_MOVE_SPEED = 0.01f;
+const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
-const int WATER_GRID = 100;
+const int WATER_GRID = 256;
 
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
-void ProcessKeyboard(GLFWwindow* window);
+void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
 
 int main()
@@ -64,14 +66,26 @@ int main()
 
 	std::cout << "Initialization complete\n";
 
-	float waveData[WATER_GRID][WATER_GRID];
-	for (int i = 0; i < WATER_GRID; i++)
+	// TODO: wave generation somewhere else
+	std::random_device randomDevice{};
+	std::mt19937 engine{ randomDevice() };
+	std::uniform_real_distribution<float> waveDist{ -2.0f, 2.0f };
+	std::normal_distribution<float> amplDist{ 0.002f, 0.0005f };
+
+	int waveCount = 20;
+	float gravity = 9.8f;
+	std::vector<glm::vec2> waves{};
+	std::vector<float> ampls{};
+	std::vector<float> omegas{};
+	for (int i = 0; i < waveCount; i++)
 	{
-		for (int j = 0; j < WATER_GRID; j++)
-		{
-			waveData[i][j] = 0.02f * (i % 4 - 2);
-		}
+		glm::vec2 newWave{ waveDist(engine), waveDist(engine) };
+		waves.push_back(newWave);
+		ampls.push_back(amplDist(engine));
+		omegas.push_back(sqrt(gravity * newWave.length()));
 	}
+
+	float waveData[WATER_GRID][WATER_GRID] = { 0 };
 
 	unsigned int waveTex;
 	glGenTextures(1, &waveTex);
@@ -82,15 +96,32 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+	float lastT = glfwGetTime();
 	while (!glfwWindowShouldClose(window))
 	{
-		ProcessKeyboard(window);
+		float t = glfwGetTime();
+		ProcessKeyboard(window, t - lastT);
+		lastT = t;
+
+		for (int i = 0; i < WATER_GRID; i++)
+		{
+			for (int j = 0; j < WATER_GRID; j++)
+			{
+				waveData[i][j] = 0;
+				for (int k = 0; k < waveCount; k++)
+				{
+					waveData[i][j] += ampls[k] * cos(waves[k].x * i + waves[k].y * j - omegas[k] * t);
+				}
+			}
+		}
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WATER_GRID, WATER_GRID, GL_RED, GL_FLOAT, waveData);
 
 		glClearColor(0.9f, 0.8f, 0.6f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		Renderer::UseShader(ShaderMode::Surface);
-		glBindTexture(GL_TEXTURE_2D, waveTex); // TODO
+		// TODO
+		//glBindTexture(GL_TEXTURE_2D, waveTex);
 		plane.Render();
 
 		glfwSwapBuffers(window);
@@ -101,32 +132,32 @@ int main()
 	return 0;
 }
 
-void ProcessKeyboard(GLFWwindow* window)
+void ProcessKeyboard(GLFWwindow* window, float dt)
 {
 	float forward = 0.0f, right = 0.0f, up = 0.0f;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		forward += CAM_MOVE_SPEED;
+		forward += CAM_MOVE_SPEED * dt;
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		forward -= CAM_MOVE_SPEED;
+		forward -= CAM_MOVE_SPEED * dt;
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		right += CAM_MOVE_SPEED;
+		right += CAM_MOVE_SPEED * dt;
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		right -= CAM_MOVE_SPEED;
+		right -= CAM_MOVE_SPEED * dt;
 	}
 	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
 	{
-		up += CAM_MOVE_SPEED;
+		up += CAM_MOVE_SPEED * dt;
 	}
 	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
 	{
-		up -= CAM_MOVE_SPEED;
+		up -= CAM_MOVE_SPEED * dt;
 	}
 	Renderer::TranslateCamera(forward, right, up);
 }

@@ -21,8 +21,9 @@ void main()
     vec3 camPos = (invV * vec4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
     view = normalize(camPos - worldPos.xyz);
 
-    vec3 t1 = normalize(vec3(2.f, texelFetch(waveTex, texCoord + ivec2(1, 0), 0).r - texelFetch(waveTex, texCoord - ivec2(1, 0), 0).r, 0.f));
-    vec3 t2 = normalize(vec3(0.f, texelFetch(waveTex, texCoord + ivec2(0, 1), 0).r - texelFetch(waveTex, texCoord - ivec2(0, 1), 0).r, 2.f));
+    // TODO: dependent on scene size
+    vec3 t1 = normalize(vec3(0.8f, texelFetch(waveTex, texCoord - ivec2(1, 0), 0).r - texelFetch(waveTex, texCoord + ivec2(1, 0), 0).r, 0.f));
+    vec3 t2 = normalize(vec3(0.f, texelFetch(waveTex, texCoord - ivec2(0, 1), 0).r - texelFetch(waveTex, texCoord + ivec2(0, 1), 0).r, 0.8f));
     normal = cross(t2, t1);
     gl_Position = P * V * worldPos;
 }
