@@ -13,7 +13,7 @@ void main()
     vec3 lightPos = vec3(0, 10, 0);
     vec3 ambientCol = vec3(0.5);
     vec3 lightCol = vec3(1);
-    float kd = 0.5, ks = 0.5, m = 100;
+    float kd = 0.5, ks = 0.5, m = 10;
 
     vec3 col = color.rgb * ambientCol;
 

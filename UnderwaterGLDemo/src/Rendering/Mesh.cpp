@@ -30,7 +30,7 @@ Mesh::Mesh(std::vector<PositionTexCoordVertex>& vert, std::vector<unsigned int>&
 void Mesh::Render()
 {
 	// TODO: actual model matrix and color
-	glm::mat4 M{ 0.1f };
+	glm::mat4 M{ 1.0f };
 	Renderer::SetMat4("M", M);
 	Renderer::SetVec4("color", 0.2f, 0.3f, 0.3f, 1.0f);
 

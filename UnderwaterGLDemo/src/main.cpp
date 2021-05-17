@@ -14,11 +14,11 @@
 const int WINDOW_WIDTH = 1600;
 const int WINDOW_HEIGHT = 900;
 const float SCENE_SIZE = 50.0f;
-const float SCENE_HEIGHT = 20.0f;
+const float SCENE_HEIGHT = 30.0f;
 const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
-const int WATER_GRID = 256;
+const int WATER_GRID = 100;
 
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
@@ -69,8 +69,8 @@ int main()
 	// TODO: wave generation somewhere else
 	std::random_device randomDevice{};
 	std::mt19937 engine{ randomDevice() };
-	std::uniform_real_distribution<float> waveDist{ -10.0f, 10.0f };
-	std::normal_distribution<float> amplDist{ 0.002f, 0.0005f };
+	std::uniform_real_distribution<float> waveDist{ -3.0f, 3.0f };
+	std::normal_distribution<float> amplDist{ 0.01f, 0.005f };
 
 	int waveCount = 20;
 	float gravity = 9.8f;
@@ -85,12 +85,12 @@ int main()
 		omegas.push_back(sqrt(gravity * newWave.length()));
 	}
 
-	float waveData[WATER_GRID][WATER_GRID] = { 0 };
+	float waveData[WATER_GRID][WATER_GRID][3] = { 0 };
 
 	unsigned int waveTex;
 	glGenTextures(1, &waveTex);
 	glBindTexture(GL_TEXTURE_2D, waveTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, WATER_GRID, WATER_GRID, 0, GL_RED, GL_FLOAT, waveData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, WATER_GRID, WATER_GRID, 0, GL_RGB, GL_FLOAT, waveData);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -108,15 +108,22 @@ int main()
 		{
 			for (int j = 0; j < WATER_GRID; j++)
 			{
-				float x0 = -SCENE_SIZE + i * sceneStep, z0 = -SCENE_SIZE + j * sceneStep;
-				waveData[i][j] = 0;
-				for (int k = 0; k < waveCount; k++)
+				float x0 = -SCENE_SIZE / 2 + i * sceneStep, z0 = -SCENE_SIZE / 2 + j * sceneStep;
+				waveData[i][j][0] = waveData[i][j][1] = waveData[i][j][2] = 0;
+				for (int waveInd = 0; waveInd < waveCount; waveInd++)
 				{
-					waveData[i][j] += ampls[k] * cos(waves[k].x * x0 + waves[k].y * z0 - omegas[k] * t);
+					glm::vec2 kNorm = glm::normalize(waves[waveInd]);
+					float phase = waves[waveInd].x * x0 + waves[waveInd].y * z0 - omegas[waveInd] * t;
+					glm::vec2 disp = kNorm * ampls[waveInd] * sin(phase);
+					waveData[i][j][0] += disp.x;
+					waveData[i][j][1] += ampls[waveInd] * cos(phase);
+					waveData[i][j][2] += disp.y;
 				}
+				waveData[i][j][0] = x0 - waveData[i][j][0];
+				waveData[i][j][2] = z0 - waveData[i][j][2];
 			}
 		}
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WATER_GRID, WATER_GRID, GL_RED, GL_FLOAT, waveData);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WATER_GRID, WATER_GRID, GL_RGB, GL_FLOAT, waveData);
 
 		glClearColor(0.9f, 0.8f, 0.6f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
