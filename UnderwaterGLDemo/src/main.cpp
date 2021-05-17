@@ -69,7 +69,7 @@ int main()
 	// TODO: wave generation somewhere else
 	std::random_device randomDevice{};
 	std::mt19937 engine{ randomDevice() };
-	std::uniform_real_distribution<float> waveDist{ -2.0f, 2.0f };
+	std::uniform_real_distribution<float> waveDist{ -10.0f, 10.0f };
 	std::normal_distribution<float> amplDist{ 0.002f, 0.0005f };
 
 	int waveCount = 20;
@@ -96,6 +96,7 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+	float sceneStep = SCENE_SIZE / (WATER_GRID - 1);
 	float lastT = glfwGetTime();
 	while (!glfwWindowShouldClose(window))
 	{
@@ -107,10 +108,11 @@ int main()
 		{
 			for (int j = 0; j < WATER_GRID; j++)
 			{
+				float x0 = -SCENE_SIZE + i * sceneStep, z0 = -SCENE_SIZE + j * sceneStep;
 				waveData[i][j] = 0;
 				for (int k = 0; k < waveCount; k++)
 				{
-					waveData[i][j] += ampls[k] * cos(waves[k].x * i + waves[k].y * j - omegas[k] * t);
+					waveData[i][j] += ampls[k] * cos(waves[k].x * x0 + waves[k].y * z0 - omegas[k] * t);
 				}
 			}
 		}
