@@ -2,6 +2,10 @@
 #include <random>
 #include <vector>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -18,7 +22,7 @@ const float SCENE_HEIGHT = 30.0f;
 const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
-const int WATER_GRID = 100;
+const int WATER_GRID = 1000;
 
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
@@ -41,6 +45,7 @@ int main()
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
+	glfwSwapInterval(0);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -50,7 +55,9 @@ int main()
 
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	Mesh plane = Mesh::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, WATER_GRID, WATER_GRID);
+	float waterColor[] { 0.2f, 0.3f, 0.3f };
+	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
+	Mesh waterPlane = Mesh::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, WATER_GRID, WATER_GRID, defWaterColor);
 
 	try
 	{
@@ -62,6 +69,11 @@ int main()
 		return -1;
 	}
 
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 460"); // TODO: this version?
+
 	glfwSetCursorPosCallback(window, ProcessMouse);
 
 	std::cout << "Initialization complete\n";
@@ -69,32 +81,32 @@ int main()
 	// TODO: wave generation somewhere else
 	std::random_device randomDevice{};
 	std::mt19937 engine{ randomDevice() };
-	std::uniform_real_distribution<float> waveDist{ -3.0f, 3.0f };
+	std::uniform_real_distribution<float> waveDist{ -10.0f, 10.0f };
 	std::normal_distribution<float> amplDist{ 0.01f, 0.005f };
 
-	int waveCount = 20;
+	const int waveCount = 20; // TODO: MAX_WAVE_COUNT constant
+	// TODO: phase shift?
+	float waveData[waveCount][4];
 	float gravity = 9.8f;
-	std::vector<glm::vec2> waves{};
-	std::vector<float> ampls{};
-	std::vector<float> omegas{};
 	for (int i = 0; i < waveCount; i++)
 	{
 		glm::vec2 newWave{ waveDist(engine), waveDist(engine) };
-		waves.push_back(newWave);
-		ampls.push_back(amplDist(engine));
-		omegas.push_back(sqrt(gravity * newWave.length()));
+		waveData[i][0] = newWave.x;
+		waveData[i][1] = newWave.y;
+		waveData[i][2] = amplDist(engine);
+		waveData[i][3] = sqrt(gravity * newWave.length());
 	}
 
-	float waveData[WATER_GRID][WATER_GRID][3] = { 0 };
+	//float waveData[WATER_GRID][WATER_GRID][3] = { 0 };
 
 	unsigned int waveTex;
 	glGenTextures(1, &waveTex);
-	glBindTexture(GL_TEXTURE_2D, waveTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, WATER_GRID, WATER_GRID, 0, GL_RGB, GL_FLOAT, waveData);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_1D, waveTex);
+	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32F, waveCount, 0, GL_RGBA, GL_FLOAT, waveData);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	//glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	float sceneStep = SCENE_SIZE / (WATER_GRID - 1);
 	float lastT = glfwGetTime();
@@ -104,39 +116,39 @@ int main()
 		ProcessKeyboard(window, t - lastT);
 		lastT = t;
 
-		for (int i = 0; i < WATER_GRID; i++)
-		{
-			for (int j = 0; j < WATER_GRID; j++)
-			{
-				float x0 = -SCENE_SIZE / 2 + i * sceneStep, z0 = -SCENE_SIZE / 2 + j * sceneStep;
-				waveData[i][j][0] = waveData[i][j][1] = waveData[i][j][2] = 0;
-				for (int waveInd = 0; waveInd < waveCount; waveInd++)
-				{
-					glm::vec2 kNorm = glm::normalize(waves[waveInd]);
-					float phase = waves[waveInd].x * x0 + waves[waveInd].y * z0 - omegas[waveInd] * t;
-					glm::vec2 disp = kNorm * ampls[waveInd] * sin(phase);
-					waveData[i][j][0] += disp.x;
-					waveData[i][j][1] += ampls[waveInd] * cos(phase);
-					waveData[i][j][2] += disp.y;
-				}
-				waveData[i][j][0] = x0 - waveData[i][j][0];
-				waveData[i][j][2] = z0 - waveData[i][j][2];
-			}
-		}
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WATER_GRID, WATER_GRID, GL_RGB, GL_FLOAT, waveData);
-
 		glClearColor(0.9f, 0.8f, 0.6f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
 		Renderer::UseShader(ShaderMode::Surface);
 		// TODO
-		//glBindTexture(GL_TEXTURE_2D, waveTex);
-		plane.Render();
+		//glBindTexture(GL_TEXTURE_1D, waveTex);
+		Renderer::SetFloat("waveCount", waveCount);
+		Renderer::SetFloat("t", t);
+		waterPlane.Render();
+
+		ImGui::Begin("Menu");
+		ImGui::Text("%.1f FPS, %.3f ms per frame", io.Framerate, 1000.0f / io.Framerate);
+
+		if (ImGui::ColorEdit3("Surface color", waterColor))
+		{
+			waterPlane.SetColor(waterColor);
+		}
+		ImGui::End();
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 	glfwTerminate();
 	return 0;
 }

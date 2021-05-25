@@ -2,9 +2,10 @@
 
 #include "Renderer.h"
 
-Mesh::Mesh(std::vector<PositionTexCoordVertex>& vert, std::vector<unsigned int>& ind) :
+Mesh::Mesh(std::vector<PositionTexCoordVertex>& vert, std::vector<unsigned int>& ind, glm::vec3& col) :
 	vertices{ vert },
 	indices{ ind },
+	color{ col },
 	position{}, rotation{}, scale{1.0f}
 {
 	auto vertexSize = sizeof(PositionTexCoordVertex);
@@ -32,13 +33,28 @@ void Mesh::Render()
 	// TODO: actual model matrix and color
 	glm::mat4 M{ 1.0f };
 	Renderer::SetMat4("M", M);
-	Renderer::SetVec4("color", 0.2f, 0.3f, 0.3f, 1.0f);
+	Renderer::SetVec3("color", color);
 
 	glBindVertexArray(vao);
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 }
 
-Mesh Mesh::MakeXZPlane(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ)
+void Mesh::SetColor(glm::vec3& newCol)
+{
+	color = newCol;
+}
+
+void Mesh::SetColor(float r, float g, float b)
+{
+	color = glm::vec3(r, g, b);
+}
+
+void Mesh::SetColor(float newCol[3])
+{
+	color = glm::vec3(newCol[0], newCol[1], newCol[2]);
+}
+
+Mesh Mesh::MakeXZPlane(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ, glm::vec3& col)
 {
 	unsigned int divX = vertX - 1, divZ = vertZ - 1;
 	std::vector<PositionTexCoordVertex> vert{};
@@ -71,5 +87,5 @@ Mesh Mesh::MakeXZPlane(float sizeX, float sizeZ, unsigned int vertX, unsigned in
 		}
 	}
 
-	return Mesh{ vert, ind };
+	return Mesh{ vert, ind, col };
 }
