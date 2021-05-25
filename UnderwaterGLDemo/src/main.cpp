@@ -23,11 +23,13 @@ const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
 const int WATER_GRID = 1000;
+const int MAX_WAVE_COUNT = 100;
 
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
 void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
+void GenerateWaves(int waveCount, float waveData[MAX_WAVE_COUNT][4]);
 
 int main()
 {
@@ -55,10 +57,6 @@ int main()
 
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	float waterColor[] { 0.2f, 0.3f, 0.3f };
-	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
-	Mesh waterPlane = Mesh::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, WATER_GRID, WATER_GRID, defWaterColor);
-
 	try
 	{
 		Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT, glm::vec3{ SCENE_SIZE / 2, SCENE_HEIGHT, SCENE_SIZE / 2 });
@@ -78,35 +76,20 @@ int main()
 
 	std::cout << "Initialization complete\n";
 
-	// TODO: wave generation somewhere else
-	std::random_device randomDevice{};
-	std::mt19937 engine{ randomDevice() };
-	std::uniform_real_distribution<float> waveDist{ -10.0f, 10.0f };
-	std::normal_distribution<float> amplDist{ 0.01f, 0.005f };
+	float waterColor[]{ 0.2f, 0.3f, 0.3f };
+	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
+	Mesh waterPlane = Mesh::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, WATER_GRID, WATER_GRID, defWaterColor);
 
-	const int waveCount = 20; // TODO: MAX_WAVE_COUNT constant
-	// TODO: phase shift?
-	float waveData[waveCount][4];
-	float gravity = 9.8f;
-	for (int i = 0; i < waveCount; i++)
-	{
-		glm::vec2 newWave{ waveDist(engine), waveDist(engine) };
-		waveData[i][0] = newWave.x;
-		waveData[i][1] = newWave.y;
-		waveData[i][2] = amplDist(engine);
-		waveData[i][3] = sqrt(gravity * newWave.length());
-	}
-
-	//float waveData[WATER_GRID][WATER_GRID][3] = { 0 };
+	int waveCount = 20, newWaveCount = 20;
+	float waveData[MAX_WAVE_COUNT][4];
+	GenerateWaves(waveCount, waveData);
 
 	unsigned int waveTex;
 	glGenTextures(1, &waveTex);
 	glBindTexture(GL_TEXTURE_1D, waveTex);
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32F, waveCount, 0, GL_RGBA, GL_FLOAT, waveData);
+	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32F, MAX_WAVE_COUNT, 0, GL_RGBA, GL_FLOAT, waveData);
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	//glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	float sceneStep = SCENE_SIZE / (WATER_GRID - 1);
 	float lastT = glfwGetTime();
@@ -133,6 +116,13 @@ int main()
 		ImGui::Begin("Menu");
 		ImGui::Text("%.1f FPS, %.3f ms per frame", io.Framerate, 1000.0f / io.Framerate);
 
+		ImGui::SliderInt("Wave count", &newWaveCount, 1, MAX_WAVE_COUNT);
+		if (ImGui::Button("Generate waves"))
+		{
+			waveCount = newWaveCount;
+			GenerateWaves(waveCount, waveData);
+			glTexSubImage1D(GL_TEXTURE_1D, 0, 0, waveCount, GL_RGBA, GL_FLOAT, waveData);
+		}
 		if (ImGui::ColorEdit3("Surface color", waterColor))
 		{
 			waterPlane.SetColor(waterColor);
@@ -191,4 +181,24 @@ void ProcessMouse(GLFWwindow* window, double posX, double posY)
 	}
 	lastX = posX;
 	lastY = posY;
+}
+
+void GenerateWaves(int waveCount, float waveData[MAX_WAVE_COUNT][4])
+{
+	// TODO: wave generation somewhere else
+	static std::random_device randomDevice{};
+	static std::mt19937 engine{ randomDevice() };
+	static std::uniform_real_distribution<float> waveDist{ -10.0f, 10.0f };
+	static std::normal_distribution<float> amplDist{ 0.01f, 0.005f };
+
+	// TODO: phase shift?
+	float gravity = 9.8f;
+	for (int i = 0; i < waveCount; i++)
+	{
+		glm::vec2 newWave{ waveDist(engine), waveDist(engine) };
+		waveData[i][0] = newWave.x;
+		waveData[i][1] = newWave.y;
+		waveData[i][2] = amplDist(engine);
+		waveData[i][3] = sqrt(gravity * newWave.length());
+	}
 }
