@@ -22,8 +22,9 @@ const float SCENE_HEIGHT = 30.0f;
 const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
-const int WATER_GRID = 1000;
 const int MAX_WAVE_COUNT = 100;
+const int MIN_GRID_SIZE = 10;
+const int MAX_GRID_SIZE = 2000;
 
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
@@ -78,7 +79,8 @@ int main()
 
 	float waterColor[]{ 0.2f, 0.3f, 0.3f };
 	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
-	Mesh waterPlane = Mesh::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, WATER_GRID, WATER_GRID, defWaterColor);
+	int gridVertexCount = 100;
+	Plane waterPlane = Plane::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, gridVertexCount, gridVertexCount, defWaterColor);
 
 	int waveCount = 20, newWaveCount = 20;
 	float waveData[MAX_WAVE_COUNT][4];
@@ -91,7 +93,6 @@ int main()
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	float sceneStep = SCENE_SIZE / (WATER_GRID - 1);
 	float lastT = glfwGetTime();
 	while (!glfwWindowShouldClose(window))
 	{
@@ -117,11 +118,16 @@ int main()
 		ImGui::Text("%.1f FPS, %.3f ms per frame", io.Framerate, 1000.0f / io.Framerate);
 
 		ImGui::SliderInt("Wave count", &newWaveCount, 1, MAX_WAVE_COUNT);
-		if (ImGui::Button("Generate waves"))
+		if (ImGui::Button("Regenerate waves"))
 		{
 			waveCount = newWaveCount;
 			GenerateWaves(waveCount, waveData);
 			glTexSubImage1D(GL_TEXTURE_1D, 0, 0, waveCount, GL_RGBA, GL_FLOAT, waveData);
+		}
+		ImGui::SliderInt("Grid size", &gridVertexCount, MIN_GRID_SIZE, MAX_GRID_SIZE);
+		if (ImGui::Button("Regenerate grid"))
+		{
+			waterPlane.Recreate(SCENE_SIZE, SCENE_SIZE, gridVertexCount, gridVertexCount);
 		}
 		if (ImGui::ColorEdit3("Surface color", waterColor))
 		{
