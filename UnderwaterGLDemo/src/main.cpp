@@ -30,7 +30,7 @@ float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
 void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
-void GenerateWaves(int waveCount, float waveData[MAX_WAVE_COUNT][4]);
+void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK, float waveData[MAX_WAVE_COUNT][4]);
 
 int main()
 {
@@ -79,12 +79,15 @@ int main()
 
 	float waterColor[]{ 0.2f, 0.3f, 0.3f };
 	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
-	int gridVertexCount = 100;
+	int gridVertexCount = 500;
 	Plane waterPlane = Plane::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, gridVertexCount, gridVertexCount, defWaterColor);
 
 	int waveCount = 20, newWaveCount = 20;
+	float minAngle = 0.0f, maxAngle = 360.0f;
+	float minAmp = 0.001f, maxAmp = 0.02f;
+	float minK = 1.0f, maxK = 10.0f; // TODO: maybe wavelength instead?
 	float waveData[MAX_WAVE_COUNT][4];
-	GenerateWaves(waveCount, waveData);
+	GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, waveData);
 
 	unsigned int waveTex;
 	glGenTextures(1, &waveTex);
@@ -118,10 +121,16 @@ int main()
 		ImGui::Text("%.1f FPS, %.3f ms per frame", io.Framerate, 1000.0f / io.Framerate);
 
 		ImGui::SliderInt("Wave count", &newWaveCount, 1, MAX_WAVE_COUNT);
+		ImGui::SliderFloat("Min angle", &minAngle, 0.0f, 360.0f, "%.3f", 1.0f);
+		ImGui::SliderFloat("Max angle", &maxAngle, 0.0f, 360.0f, "%.3f", 1.0f);
+		ImGui::SliderFloat("Min amplitude", &minAmp, 0.0001f, 0.1f, "%.4f", 1.0f);
+		ImGui::SliderFloat("Max amplitude", &maxAmp, 0.0001f, 0.1f, "%.4f", 1.0f);
+		ImGui::SliderFloat("Min k", &minK, 0.001f, 100.0f, "%.3f", 1.0f);
+		ImGui::SliderFloat("Max k", &maxK, 0.001f, 100.0f, "%.3f", 1.0f);
 		if (ImGui::Button("Regenerate waves"))
 		{
 			waveCount = newWaveCount;
-			GenerateWaves(waveCount, waveData);
+			GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, waveData);
 			glTexSubImage1D(GL_TEXTURE_1D, 0, 0, waveCount, GL_RGBA, GL_FLOAT, waveData);
 		}
 		ImGui::SliderInt("Grid size", &gridVertexCount, MIN_GRID_SIZE, MAX_GRID_SIZE);
@@ -189,22 +198,29 @@ void ProcessMouse(GLFWwindow* window, double posX, double posY)
 	lastY = posY;
 }
 
-void GenerateWaves(int waveCount, float waveData[MAX_WAVE_COUNT][4])
+void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK, float waveData[MAX_WAVE_COUNT][4])
 {
 	// TODO: wave generation somewhere else
 	static std::random_device randomDevice{};
 	static std::mt19937 engine{ randomDevice() };
-	static std::uniform_real_distribution<float> waveDist{ -10.0f, 10.0f };
-	static std::normal_distribution<float> amplDist{ 0.01f, 0.005f };
+
+	if (minAngle > maxAngle) std::swap(minAngle, maxAngle);
+	if (minAmp > maxAmp) std::swap(minAmp, maxAmp);
+	if (minK > maxK) std::swap(minK, maxK);
+
+	std::uniform_real_distribution<float> angleDist{ glm::radians(minAngle), glm::radians(maxAngle) };
+	std::uniform_real_distribution<float> ampDist{ minAmp, maxAmp };
+	std::uniform_real_distribution<float> kDist{ minK, maxK };
 
 	// TODO: phase shift?
 	float gravity = 9.8f;
 	for (int i = 0; i < waveCount; i++)
 	{
-		glm::vec2 newWave{ waveDist(engine), waveDist(engine) };
-		waveData[i][0] = newWave.x;
-		waveData[i][1] = newWave.y;
-		waveData[i][2] = amplDist(engine);
-		waveData[i][3] = sqrt(gravity * newWave.length());
+		float angle = angleDist(engine);
+		float k = kDist(engine);
+		waveData[i][0] = k * cos(angle);
+		waveData[i][1] = k * sin(angle);
+		waveData[i][2] = ampDist(engine);
+		waveData[i][3] = sqrt(gravity * k);
 	}
 }
