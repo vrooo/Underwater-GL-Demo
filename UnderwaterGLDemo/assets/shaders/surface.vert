@@ -6,7 +6,7 @@ layout (location = 1) in ivec2 texCoord;
 uniform mat4 V, invV;
 uniform mat4 P;
 
-uniform sampler1D waveTex;
+uniform sampler2D waveTex;
 uniform float waveCount;
 uniform float t;
 
@@ -21,19 +21,22 @@ void main()
     // TODO: more like GPU Gems?
     for (int i = 0; i < waveCount; i++)
     {
-        vec4 wave = texelFetch(waveTex, i, 0); // k.x, k.y, amplitude, omega
-        vec2 kNorm = normalize(wave.xy);
-        float phase = wave.x * position.x + wave.y * position.z - wave.w * t;
+        vec4 wave1 = texelFetch(waveTex, ivec2(i, 0), 0); // k.x, k.y, amplitude, omega
+        vec4 wave2 = texelFetch(waveTex, ivec2(i, 1), 0); // phase shift, 0, 0, 0
+        float amp = wave1.z, omega = wave1.w, phShift = wave2.x;
+        vec2 kVec = wave1.xy;
+        vec2 kNorm = normalize(kVec);
+        float phase = kVec.x * position.x + kVec.y * position.z - omega * t + phShift;
         float sinp = sin(phase), cosp = cos(phase);
-        vec2 disp = kNorm * wave.z * sinp;
+        vec2 disp = kNorm * amp * sinp;
 
         accX += disp.x;
-        accY += wave.z * cosp;
+        accY += amp * cosp;
         accZ += disp.y;
 
-        vec2 normalDisp = kNorm * wave.z * wave.w * cosp;
+        vec2 normalDisp = kNorm * amp * omega * cosp;
         normal.x += normalDisp.x;
-        normal.y += wave.z * wave.w * sinp;
+        normal.y += amp * omega * sinp;
         normal.z += normalDisp.y;
     }
 
@@ -42,10 +45,5 @@ void main()
     vec3 camPos = (invV * vec4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
     view = normalize(camPos - worldPos.xyz);
 
-    // TODO: dependent on scene size
-    //vec3 t1 = normalize(vec3(0.8f, texelFetch(waveTex, texCoord - ivec2(1, 0), 0).y - texelFetch(waveTex, texCoord + ivec2(1, 0), 0).y, 0.f));
-    //vec3 t2 = normalize(vec3(0.f, texelFetch(waveTex, texCoord - ivec2(0, 1), 0).y - texelFetch(waveTex, texCoord + ivec2(0, 1), 0).y, 0.8f));
-    //normal = cross(t2, t1);
-    //normal = vec3(0, 1, 0);
     gl_Position = P * V * worldPos;
 }

@@ -30,7 +30,7 @@ float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
 void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
-void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK, float waveData[MAX_WAVE_COUNT][4]);
+void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK, float waveData[MAX_WAVE_COUNT * 2][4]);
 
 int main()
 {
@@ -85,23 +85,24 @@ int main()
 	int waveCount = 20, newWaveCount = 20;
 	float minAngle = 0.0f, maxAngle = 360.0f;
 	float minAmp = 0.001f, maxAmp = 0.02f;
-	float minK = 1.0f, maxK = 10.0f; // TODO: maybe wavelength instead?
-	float waveData[MAX_WAVE_COUNT][4];
+	float minK = 1.0f, maxK = 5.0f; // TODO: maybe wavelength instead?
+	float waveData[MAX_WAVE_COUNT * 2][4] = { 0 };
 	GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, waveData);
 
 	unsigned int waveTex;
 	glGenTextures(1, &waveTex);
-	glBindTexture(GL_TEXTURE_1D, waveTex);
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA32F, MAX_WAVE_COUNT, 0, GL_RGBA, GL_FLOAT, waveData);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, waveTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, MAX_WAVE_COUNT, 2, 0, GL_RGBA, GL_FLOAT, waveData);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	float lastT = glfwGetTime();
+	float multTime = 1.0f;
+	float lastTime = glfwGetTime(), simTime = 0;
 	while (!glfwWindowShouldClose(window))
 	{
-		float t = glfwGetTime();
-		ProcessKeyboard(window, t - lastT);
-		lastT = t;
+		float t = glfwGetTime(), diffT = t - lastTime;
+		ProcessKeyboard(window, diffT);
+		lastTime = t;
 
 		glClearColor(0.9f, 0.8f, 0.6f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -112,26 +113,24 @@ int main()
 
 		Renderer::UseShader(ShaderMode::Surface);
 		// TODO
-		//glBindTexture(GL_TEXTURE_1D, waveTex);
-		Renderer::SetFloat("waveCount", waveCount);
-		Renderer::SetFloat("t", t);
-		waterPlane.Render();
+		//glBindTexture(GL_TEXTURE_2D, waveTex);
 
 		ImGui::Begin("Menu");
 		ImGui::Text("%.1f FPS, %.3f ms per frame", io.Framerate, 1000.0f / io.Framerate);
+		ImGui::SliderFloat("Time multiplier", &multTime, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 
-		ImGui::SliderInt("Wave count", &newWaveCount, 1, MAX_WAVE_COUNT);
-		ImGui::SliderFloat("Min angle", &minAngle, 0.0f, 360.0f, "%.3f", 1.0f);
-		ImGui::SliderFloat("Max angle", &maxAngle, 0.0f, 360.0f, "%.3f", 1.0f);
-		ImGui::SliderFloat("Min amplitude", &minAmp, 0.0001f, 0.1f, "%.4f", 1.0f);
-		ImGui::SliderFloat("Max amplitude", &maxAmp, 0.0001f, 0.1f, "%.4f", 1.0f);
-		ImGui::SliderFloat("Min k", &minK, 0.001f, 100.0f, "%.3f", 1.0f);
-		ImGui::SliderFloat("Max k", &maxK, 0.001f, 100.0f, "%.3f", 1.0f);
+		ImGui::SliderInt("Wave count", &newWaveCount, 1, MAX_WAVE_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Min angle", &minAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Max angle", &maxAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Min amplitude", &minAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Max amplitude", &maxAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Min k", &minK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Max k", &maxK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::Button("Regenerate waves"))
 		{
 			waveCount = newWaveCount;
 			GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, waveData);
-			glTexSubImage1D(GL_TEXTURE_1D, 0, 0, waveCount, GL_RGBA, GL_FLOAT, waveData);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, waveCount, 2, GL_RGBA, GL_FLOAT, waveData);
 		}
 		ImGui::SliderInt("Grid size", &gridVertexCount, MIN_GRID_SIZE, MAX_GRID_SIZE);
 		if (ImGui::Button("Regenerate grid"))
@@ -143,6 +142,11 @@ int main()
 			waterPlane.SetColor(waterColor);
 		}
 		ImGui::End();
+
+		Renderer::SetFloat("waveCount", waveCount);
+		simTime += multTime * diffT;
+		Renderer::SetFloat("t", simTime);
+		waterPlane.Render();
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -198,7 +202,7 @@ void ProcessMouse(GLFWwindow* window, double posX, double posY)
 	lastY = posY;
 }
 
-void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK, float waveData[MAX_WAVE_COUNT][4])
+void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK, float waveData[MAX_WAVE_COUNT * 2][4])
 {
 	// TODO: wave generation somewhere else
 	static std::random_device randomDevice{};
@@ -209,6 +213,7 @@ void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, 
 	if (minK > maxK) std::swap(minK, maxK);
 
 	std::uniform_real_distribution<float> angleDist{ glm::radians(minAngle), glm::radians(maxAngle) };
+	std::uniform_real_distribution<float> phaseShiftDist{ glm::radians(0.0f), glm::radians(360.0f) };
 	std::uniform_real_distribution<float> ampDist{ minAmp, maxAmp };
 	std::uniform_real_distribution<float> kDist{ minK, maxK };
 
@@ -222,5 +227,7 @@ void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, 
 		waveData[i][1] = k * sin(angle);
 		waveData[i][2] = ampDist(engine);
 		waveData[i][3] = sqrt(gravity * k);
+		waveData[MAX_WAVE_COUNT + i][0] = phaseShiftDist(engine);
+		waveData[MAX_WAVE_COUNT + i][1] = waveData[MAX_WAVE_COUNT + i][2] = waveData[MAX_WAVE_COUNT + i][3] = 0;
 	}
 }
