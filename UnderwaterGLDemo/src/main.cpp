@@ -30,7 +30,8 @@ float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
 void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
-void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK, float waveData[MAX_WAVE_COUNT * 2][4]);
+void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
+				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4]);
 
 int main()
 {
@@ -86,8 +87,9 @@ int main()
 	float minAngle = 0.0f, maxAngle = 360.0f;
 	float minAmp = 0.001f, maxAmp = 0.02f;
 	float minK = 1.0f, maxK = 5.0f; // TODO: maybe wavelength instead?
+	float d = 10.0f, l = 0.0f;
 	float waveData[MAX_WAVE_COUNT * 2][4] = { 0 };
-	GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, waveData);
+	GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, waveData);
 
 	unsigned int waveTex;
 	glGenTextures(1, &waveTex);
@@ -126,10 +128,13 @@ int main()
 		ImGui::SliderFloat("Max amplitude", &maxAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::SliderFloat("Min k", &minK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::SliderFloat("Max k", &maxK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Depth", &d, 0.01f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp); // TODO: checkboxes for d and l
+		ImGui::SliderFloat("Surface tension scale", &l, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+
 		if (ImGui::Button("Regenerate waves"))
 		{
 			waveCount = newWaveCount;
-			GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, waveData);
+			GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, waveData);
 			//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, waveCount, 2, GL_RGBA, GL_FLOAT, waveData);
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, waveData); // TODO: why can't I sub only waveCount columns?
 		}
@@ -203,7 +208,8 @@ void ProcessMouse(GLFWwindow* window, double posX, double posY)
 	lastY = posY;
 }
 
-void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK, float waveData[MAX_WAVE_COUNT * 2][4])
+void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
+				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4])
 {
 	// TODO: wave generation somewhere else
 	static std::random_device randomDevice{};
@@ -227,7 +233,7 @@ void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, 
 		waveData[i][1] = sin(angle);
 		waveData[i][2] = k;
 		waveData[i][3] = ampDist(engine);
-		waveData[MAX_WAVE_COUNT + i][0] = sqrt(gravity * k);
+		waveData[MAX_WAVE_COUNT + i][0] = sqrt(gravity * k * tanh(k * d) * (1 + k * k * l * l));
 		waveData[MAX_WAVE_COUNT + i][1] = phaseShiftDist(engine);
 	}
 }
