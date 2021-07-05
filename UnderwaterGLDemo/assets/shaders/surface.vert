@@ -21,11 +21,10 @@ void main()
     // TODO: more like GPU Gems?
     for (int i = 0; i < waveCount; i++)
     {
-        vec4 wave1 = texelFetch(waveTex, ivec2(i, 0), 0); // k.x, k.y, amplitude, omega
-        vec4 wave2 = texelFetch(waveTex, ivec2(i, 1), 0); // phase shift, 0, 0, 0
-        float amp = wave1.z, omega = wave1.w, phShift = wave2.x;
-        vec2 kVec = wave1.xy;
-        vec2 kNorm = normalize(kVec);
+        vec4 wave1 = texelFetch(waveTex, ivec2(i, 0), 0); // kNorm.x, kNorm.y, k, amplitude
+        vec4 wave2 = texelFetch(waveTex, ivec2(i, 1), 0); // omega, phase shift, 0, 0
+        float amp = wave1.w, omega = wave2.x, phShift = wave2.y;
+        vec2 kNorm = wave1.xy, kVec = wave1.z * kNorm;
         float phase = kVec.x * position.x + kVec.y * position.z - omega * t + phShift;
         float sinp = sin(phase), cosp = cos(phase);
         vec2 disp = kNorm * amp * sinp;

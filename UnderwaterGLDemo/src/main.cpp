@@ -130,7 +130,8 @@ int main()
 		{
 			waveCount = newWaveCount;
 			GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, waveData);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, waveCount, 2, GL_RGBA, GL_FLOAT, waveData);
+			//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, waveCount, 2, GL_RGBA, GL_FLOAT, waveData);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, waveData); // TODO: why can't I sub only waveCount columns?
 		}
 		ImGui::SliderInt("Grid size", &gridVertexCount, MIN_GRID_SIZE, MAX_GRID_SIZE);
 		if (ImGui::Button("Regenerate grid"))
@@ -217,17 +218,16 @@ void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, 
 	std::uniform_real_distribution<float> ampDist{ minAmp, maxAmp };
 	std::uniform_real_distribution<float> kDist{ minK, maxK };
 
-	// TODO: phase shift?
 	float gravity = 9.8f;
 	for (int i = 0; i < waveCount; i++)
 	{
 		float angle = angleDist(engine);
 		float k = kDist(engine);
-		waveData[i][0] = k * cos(angle);
-		waveData[i][1] = k * sin(angle);
-		waveData[i][2] = ampDist(engine);
-		waveData[i][3] = sqrt(gravity * k);
-		waveData[MAX_WAVE_COUNT + i][0] = phaseShiftDist(engine);
-		waveData[MAX_WAVE_COUNT + i][1] = waveData[MAX_WAVE_COUNT + i][2] = waveData[MAX_WAVE_COUNT + i][3] = 0;
+		waveData[i][0] = cos(angle);
+		waveData[i][1] = sin(angle);
+		waveData[i][2] = k;
+		waveData[i][3] = ampDist(engine);
+		waveData[MAX_WAVE_COUNT + i][0] = sqrt(gravity * k);
+		waveData[MAX_WAVE_COUNT + i][1] = phaseShiftDist(engine);
 	}
 }
