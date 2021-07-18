@@ -26,6 +26,9 @@ const int MAX_WAVE_COUNT = 100;
 const int MIN_GRID_SIZE = 10;
 const int MAX_GRID_SIZE = 2000;
 
+const float DEPTH_INF = 100.0f;
+const float TENSION_NONE = 0.0f;
+
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 
 void ProcessKeyboard(GLFWwindow* window, float dt);
@@ -126,10 +129,10 @@ int main()
 		ImGui::SliderFloat("Max angle", &maxAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::SliderFloat("Min amplitude", &minAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::SliderFloat("Max amplitude", &maxAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Min k", &minK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Min k", &minK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp); // TODO: wavelength or wind speed instead of k
 		ImGui::SliderFloat("Max k", &maxK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Depth", &d, 0.01f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp); // TODO: checkboxes for d and l
-		ImGui::SliderFloat("Surface tension scale", &l, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Depth", &d, 0.01f, DEPTH_INF, d == DEPTH_INF ? "Infinite" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Surface tension scale", &l, TENSION_NONE, 1.0f, l == TENSION_NONE ? "None" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
 
 		if (ImGui::Button("Regenerate waves"))
 		{
@@ -233,7 +236,18 @@ void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, 
 		waveData[i][1] = sin(angle);
 		waveData[i][2] = k;
 		waveData[i][3] = ampDist(engine);
-		waveData[MAX_WAVE_COUNT + i][0] = sqrt(gravity * k * tanh(k * d) * (1 + k * k * l * l));
+		//waveData[MAX_WAVE_COUNT + i][0] = sqrt(gravity * k * tanh(k * d) * (1 + k * k * l * l));
 		waveData[MAX_WAVE_COUNT + i][1] = phaseShiftDist(engine);
+
+		float omegaSq = gravity * k;
+		if (d < DEPTH_INF)
+		{
+			omegaSq *= tanh(k * d);
+		}
+		if (l > TENSION_NONE)
+		{
+			omegaSq *= 1 + k * k * l * l;
+		}
+		waveData[MAX_WAVE_COUNT + i][0] = sqrt(omegaSq);
 	}
 }
