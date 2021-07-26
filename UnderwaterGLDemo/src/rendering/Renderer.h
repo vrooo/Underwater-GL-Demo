@@ -11,7 +11,8 @@ enum class ShaderMode
 {
 	PassThrough,
 	Basic,
-	Surface
+	Surface,
+	ComputeFreqWave
 };
 
 class Renderer

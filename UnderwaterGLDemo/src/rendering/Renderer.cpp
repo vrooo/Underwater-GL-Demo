@@ -25,6 +25,7 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/pass.vert", "assets/shaders/pass.frag"));			// ShaderMode::PassThrough
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/mvp.vert", "assets/shaders/pass.frag"));			// ShaderMode::Basic
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surface.vert", "assets/shaders/surface.frag"));	// ShaderMode::Surface
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/currentFreqWave.comp"));						// ShaderMode::ComputeFreqWave
 	UseShader(ShaderMode::PassThrough);
 }
 
