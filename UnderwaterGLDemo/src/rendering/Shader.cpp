@@ -29,6 +29,7 @@ Shader Shader::CreateShaderVF(const char* vertPath, const char* fragPath)
 
 	return Shader{ id };
 }
+
 Shader Shader::CreateShaderVGF(const char* vertPath, const char* geomPath, const char* fragPath)
 {
 	int success;
@@ -44,6 +45,21 @@ Shader Shader::CreateShaderVGF(const char* vertPath, const char* geomPath, const
 	glDeleteShader(vertShader);
 	glDeleteShader(geomShader);
 	glDeleteShader(fragShader);
+
+	return Shader{ id };
+}
+
+Shader Shader::CreateShaderCompute(const char* compPath)
+{
+	int success;
+	char infoLog[INFO_LOG_SIZE];
+	int id = glCreateProgram();
+
+	int compShader = AttachShader(id, compPath, GL_COMPUTE_SHADER, success, infoLog);
+
+	LinkProgram(id, success, infoLog);
+
+	glDeleteShader(compShader);
 
 	return Shader{ id };
 }

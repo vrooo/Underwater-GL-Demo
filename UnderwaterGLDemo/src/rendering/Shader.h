@@ -10,6 +10,7 @@ public:
 
 	static Shader CreateShaderVF(const char* vertPath, const char* fragPath);
 	static Shader CreateShaderVGF(const char* vertPath, const char* geomPath, const char* fragPath);
+	static Shader CreateShaderCompute(const char* compPath);
 
 	void Use();
 	void SetInt(const char* name, int value);

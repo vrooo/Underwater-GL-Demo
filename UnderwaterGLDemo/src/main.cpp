@@ -25,22 +25,29 @@ const float CAM_ROTATE_SPEED = 0.1f;
 const int MAX_WAVE_COUNT = 100;
 const int MIN_GRID_SIZE = 10;
 const int MAX_GRID_SIZE = 2000;
+const int FOURIER_GRID_SIZE = 512;
 
 const float DEPTH_INF = 100.0f;
 const float TENSION_NONE = 0.0f;
 
+const float GRAVITY = 9.8f;
+
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
+float gerstnerWaveData[MAX_WAVE_COUNT * 2][4];
+float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3];
+float debugFreqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3];
 
 void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
-void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
+void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
 				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4]);
+void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3]);
 
 int main()
 {
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
@@ -75,7 +82,7 @@ int main()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version 460"); // TODO: this version?
+	ImGui_ImplOpenGL3_Init("#version 430");
 
 	glfwSetCursorPosCallback(window, ProcessMouse);
 
@@ -91,17 +98,27 @@ int main()
 	float minAmp = 0.001f, maxAmp = 0.02f;
 	float minK = 1.0f, maxK = 5.0f; // TODO: maybe wavelength instead?
 	float d = 10.0f, l = 0.0f;
-	float waveData[MAX_WAVE_COUNT * 2][4] = { 0 };
-	GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, waveData);
+	GenerateGerstnerWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, gerstnerWaveData);
 
 	unsigned int waveTex;
 	glGenTextures(1, &waveTex);
 	glBindTexture(GL_TEXTURE_2D, waveTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, MAX_WAVE_COUNT, 2, 0, GL_RGBA, GL_FLOAT, waveData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, MAX_WAVE_COUNT, 2, 0, GL_RGBA, GL_FLOAT, gerstnerWaveData);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	float multTime = 1.0f;
+	float fourierAmp = 1.0f;
+	float fourierWindSpeed = 1.0f, fourierWindAngle = 0.0f;
+	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, freqWaveData);
+
+	unsigned int initFreqWaveTex;
+	glGenTextures(1, &initFreqWaveTex);
+	glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RGB, GL_FLOAT, freqWaveData);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	float timeMult = 1.0f;
 	float lastTime = glfwGetTime(), simTime = 0;
 	while (!glfwWindowShouldClose(window))
 	{
@@ -116,13 +133,9 @@ int main()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		Renderer::UseShader(ShaderMode::Surface);
-		// TODO
-		//glBindTexture(GL_TEXTURE_2D, waveTex);
-
 		ImGui::Begin("Menu");
 		ImGui::Text("%.1f FPS, %.3f ms per frame", io.Framerate, 1000.0f / io.Framerate);
-		ImGui::SliderFloat("Time multiplier", &multTime, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat("Time multiplier", &timeMult, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 
 		ImGui::SliderInt("Wave count", &newWaveCount, 1, MAX_WAVE_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::SliderFloat("Min angle", &minAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
@@ -137,9 +150,9 @@ int main()
 		if (ImGui::Button("Regenerate waves"))
 		{
 			waveCount = newWaveCount;
-			GenerateWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, waveData);
-			//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, waveCount, 2, GL_RGBA, GL_FLOAT, waveData);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, waveData); // TODO: why can't I sub only waveCount columns?
+			GenerateGerstnerWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, gerstnerWaveData);
+			//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, waveCount, 2, GL_RGBA, GL_FLOAT, gerstnerWaveData);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, gerstnerWaveData); // TODO: why can't I sub only waveCount columns?
 		}
 		ImGui::SliderInt("Grid size", &gridVertexCount, MIN_GRID_SIZE, MAX_GRID_SIZE);
 		if (ImGui::Button("Regenerate grid"))
@@ -152,8 +165,11 @@ int main()
 		}
 		ImGui::End();
 
+		Renderer::UseShader(ShaderMode::Surface);
+		glBindTexture(GL_TEXTURE_2D, waveTex);
+
 		Renderer::SetFloat("waveCount", waveCount);
-		simTime += multTime * diffT;
+		simTime += timeMult * diffT;
 		Renderer::SetFloat("t", simTime);
 		waterPlane.Render();
 
@@ -211,7 +227,7 @@ void ProcessMouse(GLFWwindow* window, double posX, double posY)
 	lastY = posY;
 }
 
-void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
+void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
 				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4])
 {
 	// TODO: wave generation somewhere else
@@ -227,7 +243,6 @@ void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, 
 	std::uniform_real_distribution<float> ampDist{ minAmp, maxAmp };
 	std::uniform_real_distribution<float> kDist{ minK, maxK };
 
-	float gravity = 9.8f;
 	for (int i = 0; i < waveCount; i++)
 	{
 		float angle = angleDist(engine);
@@ -236,10 +251,10 @@ void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, 
 		waveData[i][1] = sin(angle);
 		waveData[i][2] = k;
 		waveData[i][3] = ampDist(engine);
-		//waveData[MAX_WAVE_COUNT + i][0] = sqrt(gravity * k * tanh(k * d) * (1 + k * k * l * l));
+		//waveData[MAX_WAVE_COUNT + i][0] = sqrt(GRAVITY * k * tanh(k * d) * (1 + k * k * l * l));
 		waveData[MAX_WAVE_COUNT + i][1] = phaseShiftDist(engine);
 
-		float omegaSq = gravity * k;
+		float omegaSq = GRAVITY * k;
 		if (d < DEPTH_INF)
 		{
 			omegaSq *= tanh(k * d);
@@ -250,4 +265,34 @@ void GenerateWaves(int waveCount, float minAngle, float maxAngle, float minAmp, 
 		}
 		waveData[MAX_WAVE_COUNT + i][0] = sqrt(omegaSq);
 	}
+}
+
+void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3])
+{
+	static std::random_device randomDevice{};
+	static std::mt19937 engine{ randomDevice() };
+	static std::normal_distribution<float> phillipsParamDist{ 0.0f, 1.0f };
+
+	glm::vec2 windDir{ cos(windAngle), sin(windAngle) };
+	float L = windSpeed * windSpeed / GRAVITY;
+
+	for (int i = 0; i < FOURIER_GRID_SIZE; i++)
+	{
+		for (int j = 0; j < FOURIER_GRID_SIZE; j++)
+		{
+			// TODO: suppress small waves
+			glm::vec2 kVec{ (float)i / FOURIER_GRID_SIZE - 0.5f, (float)j / FOURIER_GRID_SIZE - 0.5f }, kNorm = glm::normalize(kVec);
+			float kSq = glm::dot(kVec, kVec), k = sqrt(kSq);
+			float ampExp = amplitude * exp(-1.0f / (kSq * L * L));
+			float sqrtPhOver2 = sqrt(ampExp) * glm::dot(kNorm, windDir) / kSq;
+			freqWaveData[i * FOURIER_GRID_SIZE + j][0] = phillipsParamDist(engine) * sqrtPhOver2;
+			freqWaveData[i * FOURIER_GRID_SIZE + j][1] = phillipsParamDist(engine) * sqrtPhOver2;
+			freqWaveData[i * FOURIER_GRID_SIZE + j][2] = sqrt(GRAVITY * k); // TODO: other terms
+		}
+	}
+}
+
+void Debug_WriteImage()
+{
+
 }

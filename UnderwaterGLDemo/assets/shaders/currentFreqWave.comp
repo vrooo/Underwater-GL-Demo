@@ -1,0 +1,20 @@
+#version 430 core
+
+layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+uniform sampler2D freqWaveTex;
+uniform image2D curFreqWaveTex;
+uniform float t;
+
+void main()
+{
+	vec2 texCoord = gl_GlobalInvocationID.xy / textureSize(freqWaveTex, 0);
+	vec2 k = texCoord - 0.5f;
+	vec4 freqWaveInfo = texture(freqWaveTex, texCoord); // h0.x, h0.y, omega
+	vec2 h0 = freqWaveInfo.rg, h0neg = texture(freqWaveTex, 1.0f - texCoord).rg;
+	float omega = freqWaveInfo.b;
+
+	float phase = omega * t, sinp = sin(phase), cosp = cos(phase);
+	vec2 ht = vec2(cosp * (h0.x + h0neg.x) - sinp * (h0.y + h0neg.y), cosp * (h0.y - h0neg.y) + sinp * (h0.x - h0neg.x));
+	imageStore(curFreqWaveTex, ivec2(gl_GlobalInvocationID.xy), vec4(ht, 0.0f, 1.0f));
+}
