@@ -146,7 +146,7 @@ int main()
 	unsigned int fourierCoordLookupTex;
 	glGenTextures(1, &fourierCoordLookupTex);
 	glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, FOURIER_GRID_SIZE, FOURIER_DIGIT_COUNT, 0, GL_RG, GL_UNSIGNED_INT, fourierCoordLookup);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, FOURIER_GRID_SIZE, FOURIER_DIGIT_COUNT, 0, GL_RG, GL_UNSIGNED_INT, fourierCoordLookup);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -165,7 +165,7 @@ int main()
 	unsigned int fourierHeightTex;
 	glGenTextures(1, &fourierHeightTex);
 	glBindTexture(GL_TEXTURE_2D, fourierHeightTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_R, GL_FLOAT, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RED, GL_FLOAT, nullptr);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -240,7 +240,7 @@ int main()
 		Renderer::SetFloat("t", simTime);
 		Renderer::SetFloat("fourierGridSizeFloat", FOURIER_GRID_SIZE);
 		glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE, 1);
-		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 		if (SAVE_FOURIER_DEBUG)
 		{
@@ -280,7 +280,7 @@ int main()
 			Renderer::SetUint("N", N);
 			Renderer::SetUint("level", level);
 			glDispatchCompute(FOURIER_GROUP_SIZE / 2, FOURIER_GROUP_SIZE / 2, 1);
-			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		}
 
 		Renderer::UseShader(ShaderMode::ComputeIFFTY);
@@ -324,7 +324,7 @@ int main()
 			Renderer::SetUint("N", N);
 			Renderer::SetUint("level", level);
 			glDispatchCompute(FOURIER_GROUP_SIZE / 2, FOURIER_GROUP_SIZE / 2, 1);
-			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		}
 		Renderer::UseShader(ShaderMode::SurfaceHeightMap);
 		glActiveTexture(GL_TEXTURE0);

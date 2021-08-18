@@ -33,8 +33,10 @@ void main()
 		ivec2 writeCoord1 = invocationCoord;
 		ivec2 writeCoord2 = ivec2(writeCoord1.x, writeCoord1.y + fourierGridSize / 2);
 		// write from pixelCoordK to writeCoordK (conjugated)
-		imageStore(writeTex, writeCoord1, vec4(pixel1.r, -pixel1.g, 0.0f, 1.0f));
-		imageStore(writeTex, writeCoord2, vec4(pixel2.r, -pixel2.g, 0.0f, 1.0f));
+		//imageStore(writeTex, writeCoord1, vec4(pixel1.r, -pixel1.g, 0.0f, 1.0f));
+		imageStore(writeTex, writeCoord1, vec4(100.0f));
+		//imageStore(writeTex, writeCoord2, vec4(pixel2.r, -pixel2.g, 0.0f, 1.0f));
+		imageStore(writeTex, writeCoord2, vec4(100.0f));
 	}
 	else
 	{
@@ -42,7 +44,9 @@ void main()
 		vec2 p = pixel1, q = twiddle(pixel2, k);
 		vec2 res1 = p + q, res2 = p - q;
 		// we're not doing N == fourierGridSize with this shader
-		imageStore(writeTex, pixelCoord1, vec4(res1, 0.0f, 1.0f));
-		imageStore(writeTex, pixelCoord2, vec4(res2, 0.0f, 1.0f));
+		//imageStore(writeTex, pixelCoord1, vec4(res1, 0.0f, 1.0f));
+		imageStore(writeTex, pixelCoord1, vec4(100.0f));
+		//imageStore(writeTex, pixelCoord2, vec4(res2, 0.0f, 1.0f));
+		imageStore(writeTex, pixelCoord2, vec4(100.0f));
 	}
 }
