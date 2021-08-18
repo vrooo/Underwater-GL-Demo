@@ -2,14 +2,14 @@
 
 layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
-uniform sampler2D freqWaveTex;
-uniform writeonly image2D curFreqWaveTex;
+layout (rgba32f) uniform sampler2D freqWaveTex;
+layout (rg32f)   uniform writeonly image2D curFreqWaveTex;
 uniform float t;
-uniform float fourierGridSize;
+uniform float fourierGridSizeFloat;
 
 void main()
 {
-	vec2 texCoord = gl_GlobalInvocationID.xy / fourierGridSize;
+	vec2 texCoord = gl_GlobalInvocationID.xy / fourierGridSizeFloat;
 	vec2 k = texCoord - 0.5f;
 	vec4 freqWaveInfo = texture(freqWaveTex, texCoord); // h0.x, h0.y, omega
 	vec2 h0 = freqWaveInfo.rg, h0neg = texture(freqWaveTex, 1.0f - texCoord).rg;

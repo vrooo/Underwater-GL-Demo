@@ -24,8 +24,12 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/pass.vert", "assets/shaders/pass.frag"));			// ShaderMode::PassThrough
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/mvp.vert", "assets/shaders/pass.frag"));			// ShaderMode::Basic
-	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surface.vert", "assets/shaders/surface.frag"));	// ShaderMode::Surface
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surface.vert", "assets/shaders/surface.frag"));	// ShaderMode::SurfaceGerstner
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfHeight.vert", "assets/shaders/surface.frag"));	// ShaderMode::SurfaceHeightMap
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/currentFreqWave.comp"));						// ShaderMode::ComputeFreqWave
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_x.comp"));								// ShaderMode::ComputeIFFTX
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y.comp"));								// ShaderMode::ComputeIFFTY
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y_last.comp"));							// ShaderMode::ComputeIFFTYLastPass
 	UseShader(ShaderMode::PassThrough);
 }
 
@@ -63,6 +67,11 @@ void Renderer::RotateCamera(float pitch, float yaw)
 void Renderer::SetInt(const char* name, int value)
 {
 	current->SetInt(name, value);
+}
+
+void Renderer::SetUint(const char* name, unsigned int value)
+{
+	current->SetUint(name, value);
 }
 
 void Renderer::SetFloat(const char* name, float value)

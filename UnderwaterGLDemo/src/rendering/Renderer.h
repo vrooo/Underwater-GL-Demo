@@ -11,8 +11,12 @@ enum class ShaderMode
 {
 	PassThrough,
 	Basic,
-	Surface,
-	ComputeFreqWave
+	SurfaceGerstner,
+	SurfaceHeightMap,
+	ComputeFreqWave,
+	ComputeIFFTX,
+	ComputeIFFTY,
+	ComputeIFFTYLastPass,
 };
 
 class Renderer
@@ -22,6 +26,7 @@ public:
 	static void UseShader(ShaderMode mode);
 
 	static void SetInt(const char* name, int value);
+	static void SetUint(const char* name, unsigned int value);
 	static void SetFloat(const char* name, float value);
 	static void SetVec3(const char* name, float x, float y, float z);
 	static void SetVec3(const char* name, glm::vec3& vec);

@@ -23,7 +23,8 @@ Plane::Plane(std::vector<PositionTexCoordVertex>& vert, std::vector<unsigned int
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_DYNAMIC_DRAW);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexTypeSize, (void*)0);
-	glVertexAttribIPointer(1, 2, GL_INT, vertexTypeSize, (void*)(3 * sizeof(float)));
+	//glVertexAttribIPointer(1, 2, GL_INT, vertexTypeSize, (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexTypeSize, (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 }
@@ -71,7 +72,7 @@ void Plane::Recreate(float sizeX, float sizeZ, unsigned int vertX, unsigned int 
 		for (unsigned int iz = 0; iz < divZ + 1; iz++)
 		{
 			vertices.push_back(PositionTexCoordVertex{ glm::vec3{ startX + ix * stepX, y, startZ + iz * stepZ },
-													glm::ivec2{ ix, iz } });
+														glm::vec2{ (float)ix / divX, (float)iz / divZ } });
 			if (ix < divX && iz < divZ)
 			{
 				unsigned int j = i + divZ + 2;
@@ -114,7 +115,7 @@ Plane Plane::MakeXZPlane(float sizeX, float sizeZ, unsigned int vertX, unsigned 
 		for (unsigned int iz = 0; iz < divZ + 1; iz++)
 		{
 			vert.push_back(PositionTexCoordVertex{ glm::vec3{ startX + ix * stepX, y, startZ + iz * stepZ },
-													glm::ivec2{ ix, iz } });
+													glm::vec2{ (float)ix / divX, (float)iz / divZ } });
 			if (ix < divX && iz < divZ)
 			{
 				unsigned int j = i + divZ + 2;

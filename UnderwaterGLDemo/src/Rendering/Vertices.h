@@ -6,5 +6,5 @@
 struct PositionTexCoordVertex
 {
 	glm::vec3 position;
-	glm::ivec2 texCoord;
+	glm::vec2 texCoord;
 };

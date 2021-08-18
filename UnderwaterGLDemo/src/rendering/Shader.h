@@ -14,6 +14,7 @@ public:
 
 	void Use();
 	void SetInt(const char* name, int value);
+	void SetUint(const char* name, unsigned int value);
 	void SetFloat(const char* name, float value);
 	void SetVec3(const char* name, float x, float y, float z);
 	void SetVec3(const char* name, glm::vec3& vec);

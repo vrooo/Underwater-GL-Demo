@@ -1,0 +1,57 @@
+#version 430 core
+const float two_pi = 6.28318531;
+
+layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+layout (rg16ui) uniform readonly usampler2D coordLookupTex;
+layout (rg32f) uniform readonly image2D readTex;
+layout (rg32f) uniform writeonly image2D writeTex;
+uniform uint fourierGridSize;
+uniform uint N;
+uniform uint level;
+
+vec2 twiddle(vec2 q, uint k)
+{
+	float arg = (two_pi * k) / N;
+	float sinarg = sin(arg), cosarg = cos(arg); // TODO: precalc twiddle factors
+	return vec2(q.x * cosarg + q.y * sinarg, q.y * cosarg - q.x * sinarg);
+}
+
+void main()
+{
+	// working on x coord
+	ivec2 invocationCoord = ivec2(gl_GlobalInvocationID.xy);
+	uvec2 actualCoordX = texelFetch(coordLookupTex, ivec2(invocationCoord.x, level), 0).xy;
+	ivec2 pixelCoord1 = ivec2(actualCoordX.x, invocationCoord.y);
+	ivec2 pixelCoord2 = ivec2(actualCoordX.y, invocationCoord.y);
+	vec2 pixel1 = imageLoad(readTex, pixelCoord1).rg;
+	vec2 pixel2 = imageLoad(readTex, pixelCoord2).rg;
+
+	if (level == 0)
+	{
+		ivec2 writeCoord1 = invocationCoord;
+		ivec2 writeCoord2 = ivec2(writeCoord1.x + fourierGridSize / 2, writeCoord1.y);
+		// write from pixelCoordK to writeCoordK (conjugated)
+		imageStore(writeTex, writeCoord1, vec4(pixel1.r, -pixel1.g, 0.0f, 1.0f));
+		//imageStore(writeTex, writeCoord1, vec4(1.0f));
+		imageStore(writeTex, writeCoord2, vec4(pixel2.r, -pixel2.g, 0.0f, 1.0f));
+		//imageStore(writeTex, writeCoord2, vec4(1.0f));
+	}
+	else
+	{
+		uint k = invocationCoord.x % (N / 2);
+		vec2 p = pixel1, q = twiddle(pixel2, k);
+		vec2 res1 = p + q, res2 = p - q;
+		if (N == fourierGridSize)
+		{
+			// conjugate and scale
+			// TODO: is this needed here?
+			res1 = vec2(res1.x, -res1.y) / N;
+			res2 = vec2(res2.x, -res2.y) / N;
+		}
+		imageStore(writeTex, pixelCoord1, vec4(res1, 0.0f, 1.0f));
+		//imageStore(writeTex, pixelCoord1, vec4(1.0f));
+		imageStore(writeTex, pixelCoord2, vec4(res2, 0.0f, 1.0f));
+		//imageStore(writeTex, pixelCoord2, vec4(1.0f));
+	}
+}

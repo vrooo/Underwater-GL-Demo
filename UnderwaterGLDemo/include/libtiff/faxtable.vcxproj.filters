@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\yolo\uni\mgr\dyplom\UnderwaterGLDemo\tiff-4.3.0\CMakeFiles\a45f576e4c3ca0cdcb8972b5bace376b\faxtable.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\yolo\uni\mgr\dyplom\UnderwaterGLDemo\tiff-4.3.0\libtiff\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\yolo\uni\mgr\dyplom\UnderwaterGLDemo\tiff-4.3.0\libtiff\CMakeFiles\faxtable" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{4EA297B7-F6A6-392C-85D5-C226CC453EC3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

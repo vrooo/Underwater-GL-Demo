@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\yolo\uni\mgr\dyplom\UnderwaterGLDemo\tiff-4.3.0\libtiff\mkg3states.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\yolo\uni\mgr\dyplom\UnderwaterGLDemo\tiff-4.3.0\port\getopt.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\yolo\uni\mgr\dyplom\UnderwaterGLDemo\tiff-4.3.0\libtiff\tif_fax3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\yolo\uni\mgr\dyplom\UnderwaterGLDemo\tiff-4.3.0\libtiff\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{14E3C8A6-E81A-36A3-8B44-C98D734CF37B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{A5E9B187-6358-3EAD-AB66-12A48A53D7B2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

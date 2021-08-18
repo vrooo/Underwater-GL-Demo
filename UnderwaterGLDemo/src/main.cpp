@@ -1,5 +1,6 @@
 #include <iostream>
 #include <random>
+#include <string>
 #include <vector>
 
 #include <imgui.h>
@@ -11,25 +12,29 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define cimg_use_tiff
 #include <CImg/CImg.h>
 
 #include "Rendering/Mesh.h"
 #include "Rendering/Shader.h"
 #include "Rendering/Renderer.h"
 
-const int WINDOW_WIDTH = 1600;
-const int WINDOW_HEIGHT = 900;
+#define SAVE_FOURIER_DEBUG false
+
+const unsigned int WINDOW_WIDTH = 1600;
+const unsigned int WINDOW_HEIGHT = 900;
 const float SCENE_SIZE = 50.0f;
 const float SCENE_HEIGHT = 30.0f;
 const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
-const int MAX_WAVE_COUNT = 100;
-const int MIN_GRID_SIZE = 10;
-const int MAX_GRID_SIZE = 2000;
-const int FOURIER_GRID_SIZE = 512;
-const int FOURIER_COMPUTE_CHUNK = 32;
-const int FOURIER_GROUP_SIZE = FOURIER_GRID_SIZE / FOURIER_COMPUTE_CHUNK;
+const unsigned int MAX_WAVE_COUNT = 100;
+const unsigned int MIN_GRID_SIZE = 10;
+const unsigned int MAX_GRID_SIZE = 2000;
+const unsigned int FOURIER_GRID_SIZE = 512;
+const unsigned int FOURIER_DIGIT_COUNT = 9; // log2(FOURIER_GRID_SIZE)
+const unsigned int FOURIER_COMPUTE_CHUNK = 32;
+const unsigned int FOURIER_GROUP_SIZE = FOURIER_GRID_SIZE / FOURIER_COMPUTE_CHUNK;
 
 const float DEPTH_INF = 100.0f;
 const float TENSION_NONE = 0.0f;
@@ -40,12 +45,15 @@ float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 float gerstnerWaveData[MAX_WAVE_COUNT * 2][4];
 float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3];
 float debugFreqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE * 3];
+unsigned int fourierCoordLookup[FOURIER_GRID_SIZE / 2 * (FOURIER_DIGIT_COUNT + 1)][2];
 
 void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
 void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
 				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4]);
 void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3]);
+void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE / 2 * (FOURIER_DIGIT_COUNT + 1)][2]);
+int ReverseBits(int val, int digitCount);
 void Debug_WriteImage();
 
 int main()
@@ -112,10 +120,14 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	float fourierAmp = 0.1f;
-	float fourierWindSpeed = 5.0f, fourierWindAngle = 30.0f;
+	float fourierAmp = 1.0f;
+	float fourierWindSpeed = 30.0f, fourierWindAngle = 30.0f;
 	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, freqWaveData);
-	Debug_WriteImage();
+	if (SAVE_FOURIER_DEBUG)
+	{
+		Debug_WriteImage();
+	}
+	GenerateFourierCoordLookup(fourierCoordLookup);
 
 	unsigned int initFreqWaveTex;
 	glGenTextures(1, &initFreqWaveTex);
@@ -131,6 +143,33 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+	unsigned int fourierCoordLookupTex;
+	glGenTextures(1, &fourierCoordLookupTex);
+	glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, FOURIER_GRID_SIZE, FOURIER_DIGIT_COUNT, 0, GL_RG, GL_UNSIGNED_INT, fourierCoordLookup);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	unsigned int fourierBufferTex1, fourierBufferTex2;
+	glGenTextures(1, &fourierBufferTex1);
+	glBindTexture(GL_TEXTURE_2D, fourierBufferTex1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RG, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glGenTextures(1, &fourierBufferTex2);
+	glBindTexture(GL_TEXTURE_2D, fourierBufferTex2);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RG, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	unsigned int fourierHeightTex;
+	glGenTextures(1, &fourierHeightTex);
+	glBindTexture(GL_TEXTURE_2D, fourierHeightTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_R, GL_FLOAT, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+
 	float timeMult = 1.0f;
 	float lastTime = glfwGetTime(), simTime = 0;
 	while (!glfwWindowShouldClose(window))
@@ -142,7 +181,7 @@ int main()
 		glClearColor(0.9f, 0.8f, 0.6f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		Renderer::UseShader(ShaderMode::Surface);
+		Renderer::UseShader(ShaderMode::SurfaceGerstner);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, waveTex);
 		Renderer::SetInt("waveTex", 0);
@@ -186,7 +225,8 @@ int main()
 		Renderer::SetFloat("waveCount", waveCount);
 		simTime += timeMult * diffT;
 		Renderer::SetFloat("t", simTime);
-		waterPlane.Render();
+		// TODO: uncomment me
+		//waterPlane.Render();
 
 		// TODO: start debug computing
 		Renderer::UseShader(ShaderMode::ComputeFreqWave);
@@ -198,12 +238,100 @@ int main()
 		glBindImageTexture(0, curFreqWaveTex, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
 		Renderer::SetInt("curFreqWaveTex", 0);
 		Renderer::SetFloat("t", simTime);
-		Renderer::SetFloat("fourierGridSize", FOURIER_GRID_SIZE);
+		Renderer::SetFloat("fourierGridSizeFloat", FOURIER_GRID_SIZE);
 		glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE, 1);
+		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-		glBindTexture(GL_TEXTURE_2D, curFreqWaveTex);
-		glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_FLOAT, freqWaveData);
-		Debug_WriteImage();
+		if (SAVE_FOURIER_DEBUG)
+		{
+			glBindTexture(GL_TEXTURE_2D, curFreqWaveTex);
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_FLOAT, freqWaveData);
+			Debug_WriteImage();
+		}
+
+		Renderer::UseShader(ShaderMode::ComputeIFFTX);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
+		Renderer::SetInt("coordLookupTex", 0);
+		Renderer::SetUint("fourierGridSize", FOURIER_GRID_SIZE);
+		bool readFromFirst = true;
+		for (int level = 0, N = 1; N <= FOURIER_GRID_SIZE; level++, N *= 2)
+		{
+			if (readFromFirst)
+			{
+				if (level == 0)
+				{
+					glBindImageTexture(0, curFreqWaveTex, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+				}
+				else
+				{
+					glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+				}
+				glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
+			}
+			else
+			{
+				glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+				glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
+			}
+			readFromFirst = !readFromFirst;
+			Renderer::SetInt("readTex", 0);
+			Renderer::SetInt("writeTex", 1);
+			Renderer::SetUint("N", N);
+			Renderer::SetUint("level", level);
+			glDispatchCompute(FOURIER_GROUP_SIZE / 2, FOURIER_GROUP_SIZE / 2, 1);
+			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+		}
+
+		Renderer::UseShader(ShaderMode::ComputeIFFTY);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
+		Renderer::SetInt("coordLookupTex", 0);
+		Renderer::SetUint("fourierGridSize", FOURIER_GRID_SIZE);
+		for (int level = 0, N = 1; N <= FOURIER_GRID_SIZE; level++, N *= 2)
+		{
+			if (N == FOURIER_GRID_SIZE)
+			{
+				Renderer::UseShader(ShaderMode::ComputeIFFTYLastPass);
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
+				if (readFromFirst)
+				{
+					glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+				}
+				else
+				{
+					glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+				}
+				glBindImageTexture(1, fourierHeightTex, 0, true, 0, GL_WRITE_ONLY, GL_R32F);
+			}
+			else
+			{
+				if (readFromFirst)
+				{
+					glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+					glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
+				}
+				else
+				{
+					glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+					glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
+				}
+			}
+			readFromFirst = !readFromFirst;
+			Renderer::SetInt("readTex", 0);
+			Renderer::SetInt("writeTex", 1);
+			Renderer::SetUint("N", N);
+			Renderer::SetUint("level", level);
+			glDispatchCompute(FOURIER_GROUP_SIZE / 2, FOURIER_GROUP_SIZE / 2, 1);
+			glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+		}
+		Renderer::UseShader(ShaderMode::SurfaceHeightMap);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, fourierHeightTex);
+		Renderer::SetInt("heightTex", 0);
+		waterPlane.Render();
+
 		// TODO: end debug computing
 
 		ImGui::Render();
@@ -326,9 +454,53 @@ void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, flo
 	}
 }
 
+void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE / 2 * (FOURIER_DIGIT_COUNT + 1)][2])
+{
+	// level 0 - bit reversal of index
+	for (int i = 0; i < FOURIER_GRID_SIZE / 2; i++)
+	{
+		coordLookup[i /*+ FOURIER_GRID_SIZE * 0*/][0] = ReverseBits(i, FOURIER_DIGIT_COUNT);
+		coordLookup[i /*+ FOURIER_GRID_SIZE * 0*/][1] = ReverseBits(i + FOURIER_GRID_SIZE / 2, FOURIER_DIGIT_COUNT);
+	}
+	// remaining levels
+	int N = FOURIER_GRID_SIZE, level = FOURIER_DIGIT_COUNT;
+	while (N > 1)
+	{
+		int k = 0, i = 0;
+		while (k < FOURIER_GRID_SIZE)
+		{
+			for (int j = 0; j < N / 2; i++, j++, k++)
+			{
+				coordLookup[i + FOURIER_GRID_SIZE * level][0] = k;
+				coordLookup[i + FOURIER_GRID_SIZE * level][0] = k + N / 2;
+			}
+			k += N / 2;
+		}
+		N /= 2;
+		level--;
+	}
+}
+
+int ReverseBits(int val, int digitCount)
+{
+	int res = 0;
+	while (digitCount-- > 0)
+	{
+		res = (res << 1) | (val & 1);
+		val >>= 1;
+	}
+	return res;
+}
+
 void Debug_WriteImage()
 {
+	static const unsigned int COUNTER_LENGTH = 6;
 	static int counter = 0;
+
+	if (counter >= 1e6)
+	{
+		return;
+	}
 
 	for (int i = 0; i < FOURIER_GRID_SIZE; i++)
 	{
@@ -336,11 +508,16 @@ void Debug_WriteImage()
 		{
 			for (int k = 0; k < 3; k++)
 			{
-				debugFreqWaveData[i + FOURIER_GRID_SIZE * (j + FOURIER_GRID_SIZE * k)] = freqWaveData[i + FOURIER_GRID_SIZE * j][k];
+				debugFreqWaveData[i + FOURIER_GRID_SIZE * (j + FOURIER_GRID_SIZE * k)] = k == 2 ? 0 : 128 + freqWaveData[i + FOURIER_GRID_SIZE * j][k];
 			}
 		}
 	}
 
 	cimg_library::CImg<float> image{ debugFreqWaveData, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 1, 3 };
-	image.save("../../debug/test.bmp", counter++);
+	std::string counterStr = std::to_string(counter);
+	std::string zeroStr = std::string( COUNTER_LENGTH - counterStr.length(), '0' );
+	std::string name = std::string{ "../../debug/img/test_" }.append(zeroStr).append(counterStr).append(".tiff");
+	image.save_tiff(name.c_str());
+
+	counter++;
 }
