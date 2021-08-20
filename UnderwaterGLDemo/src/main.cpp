@@ -279,7 +279,7 @@ int main()
 			Renderer::SetInt("writeTex", 1);
 			Renderer::SetUint("N", N);
 			Renderer::SetUint("level", level);
-			glDispatchCompute(FOURIER_GROUP_SIZE / 2, FOURIER_GROUP_SIZE / 2, 1);
+			glDispatchCompute(FOURIER_GROUP_SIZE / 2, FOURIER_GROUP_SIZE, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		}
 
@@ -323,12 +323,13 @@ int main()
 			Renderer::SetInt("writeTex", 1);
 			Renderer::SetUint("N", N);
 			Renderer::SetUint("level", level);
-			glDispatchCompute(FOURIER_GROUP_SIZE / 2, FOURIER_GROUP_SIZE / 2, 1);
+			glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE / 2, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		}
 		Renderer::UseShader(ShaderMode::SurfaceHeightMap);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, fourierHeightTex);
+		//glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, freqWaveData);
 		Renderer::SetInt("heightTex", 0);
 		waterPlane.Render();
 
@@ -472,7 +473,7 @@ void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE / 2 *
 			for (int j = 0; j < N / 2; i++, j++, k++)
 			{
 				coordLookup[i + FOURIER_GRID_SIZE * level][0] = k;
-				coordLookup[i + FOURIER_GRID_SIZE * level][0] = k + N / 2;
+				coordLookup[i + FOURIER_GRID_SIZE * level][1] = k + N / 2;
 			}
 			k += N / 2;
 		}
