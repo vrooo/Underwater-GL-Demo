@@ -32,6 +32,7 @@ const unsigned int MAX_WAVE_COUNT = 100;
 const unsigned int MIN_GRID_SIZE = 10;
 const unsigned int MAX_GRID_SIZE = 2000;
 const unsigned int FOURIER_GRID_SIZE = 512;
+const unsigned int FOURIER_GRID_SIZE_HALF = FOURIER_GRID_SIZE / 2;
 const unsigned int FOURIER_DIGIT_COUNT = 9; // log2(FOURIER_GRID_SIZE)
 const unsigned int FOURIER_COMPUTE_CHUNK = 32;
 const unsigned int FOURIER_GROUP_SIZE = FOURIER_GRID_SIZE / FOURIER_COMPUTE_CHUNK;
@@ -45,14 +46,14 @@ float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
 float gerstnerWaveData[MAX_WAVE_COUNT * 2][4];
 float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3];
 float debugFreqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE * 3];
-unsigned int fourierCoordLookup[FOURIER_GRID_SIZE / 2 * (FOURIER_DIGIT_COUNT + 1)][2];
+unsigned int fourierCoordLookup[FOURIER_GRID_SIZE_HALF * (FOURIER_DIGIT_COUNT + 1)][2];
 
 void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
 void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
 				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4]);
 void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3]);
-void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE / 2 * (FOURIER_DIGIT_COUNT + 1)][2]);
+void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE_HALF * (FOURIER_DIGIT_COUNT + 1)][2]);
 int ReverseBits(int val, int digitCount);
 void Debug_WriteImage();
 
@@ -146,7 +147,7 @@ int main()
 	unsigned int fourierCoordLookupTex;
 	glGenTextures(1, &fourierCoordLookupTex);
 	glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, FOURIER_GRID_SIZE, FOURIER_DIGIT_COUNT, 0, GL_RG, GL_UNSIGNED_INT, fourierCoordLookup);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, FOURIER_GRID_SIZE_HALF, FOURIER_DIGIT_COUNT + 1, 0, GL_RG, GL_UNSIGNED_INT, fourierCoordLookup);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -455,13 +456,13 @@ void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, flo
 	}
 }
 
-void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE / 2 * (FOURIER_DIGIT_COUNT + 1)][2])
+void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE_HALF * (FOURIER_DIGIT_COUNT + 1)][2])
 {
 	// level 0 - bit reversal of index
-	for (int i = 0; i < FOURIER_GRID_SIZE / 2; i++)
+	for (int i = 0; i < FOURIER_GRID_SIZE_HALF; i++)
 	{
-		coordLookup[i /*+ FOURIER_GRID_SIZE * 0*/][0] = ReverseBits(i, FOURIER_DIGIT_COUNT);
-		coordLookup[i /*+ FOURIER_GRID_SIZE * 0*/][1] = ReverseBits(i + FOURIER_GRID_SIZE / 2, FOURIER_DIGIT_COUNT);
+		coordLookup[i /*+ FOURIER_GRID_SIZE_HALF * 0*/][0] = ReverseBits(i, FOURIER_DIGIT_COUNT);
+		coordLookup[i /*+ FOURIER_GRID_SIZE_HALF * 0*/][1] = ReverseBits(i + FOURIER_GRID_SIZE_HALF, FOURIER_DIGIT_COUNT);
 	}
 	// remaining levels
 	int N = FOURIER_GRID_SIZE, level = FOURIER_DIGIT_COUNT;
@@ -472,8 +473,8 @@ void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE / 2 *
 		{
 			for (int j = 0; j < N / 2; i++, j++, k++)
 			{
-				coordLookup[i + FOURIER_GRID_SIZE * level][0] = k;
-				coordLookup[i + FOURIER_GRID_SIZE * level][1] = k + N / 2;
+				coordLookup[i + FOURIER_GRID_SIZE_HALF * level][0] = k;
+				coordLookup[i + FOURIER_GRID_SIZE_HALF * level][1] = k + N / 2;
 			}
 			k += N / 2;
 		}
