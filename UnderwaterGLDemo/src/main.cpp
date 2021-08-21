@@ -147,7 +147,7 @@ int main()
 	unsigned int fourierCoordLookupTex;
 	glGenTextures(1, &fourierCoordLookupTex);
 	glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, FOURIER_GRID_SIZE_HALF, FOURIER_DIGIT_COUNT + 1, 0, GL_RG, GL_UNSIGNED_INT, fourierCoordLookup);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, FOURIER_GRID_SIZE_HALF, FOURIER_DIGIT_COUNT + 1, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, fourierCoordLookup);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
