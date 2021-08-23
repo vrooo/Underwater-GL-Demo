@@ -19,6 +19,8 @@ const float Z_NEAR = 0.1f, Z_FAR = 100.0f;
 
 void Renderer::Init(float width, float height, glm::vec3 boundary)
 {
+	//glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
 	sceneBoundary = boundary;
 	P = glm::perspectiveFov(FOV, width, height, Z_NEAR, Z_FAR);
 
