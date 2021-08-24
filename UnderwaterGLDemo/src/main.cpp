@@ -122,7 +122,7 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	float fourierAmp = 0.2f;
-	float fourierWindSpeed = 100.0f, fourierWindAngle = 30.0f;
+	float fourierWindSpeed = 30.0f, fourierWindAngle = 30.0f;
 	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, freqWaveData);
 	if (SAVE_FOURIER_DEBUG)
 	{
@@ -163,10 +163,10 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	unsigned int fourierHeightTex;
-	glGenTextures(1, &fourierHeightTex);
-	glBindTexture(GL_TEXTURE_2D, fourierHeightTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RED, GL_FLOAT, nullptr);
+	unsigned int fourierNormalHeightTex;
+	glGenTextures(1, &fourierNormalHeightTex);
+	glBindTexture(GL_TEXTURE_2D, fourierNormalHeightTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RGBA, GL_FLOAT, nullptr);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -296,28 +296,17 @@ int main()
 				Renderer::UseShader(ShaderMode::ComputeIFFTYLastPass);
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
-				if (readFromFirst)
-				{
-					glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-				}
-				else
-				{
-					glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-				}
-				glBindImageTexture(1, fourierHeightTex, 0, true, 0, GL_WRITE_ONLY, GL_R32F);
+				Renderer::SetInt("coordLookupTex", 0);
+			}
+			if (readFromFirst)
+			{
+				glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+				glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
 			}
 			else
 			{
-				if (readFromFirst)
-				{
-					glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-					glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-				}
-				else
-				{
-					glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-					glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-				}
+				glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+				glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
 			}
 			readFromFirst = !readFromFirst;
 			Renderer::SetInt("readTex", 0);
@@ -327,11 +316,19 @@ int main()
 			glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE / 2, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		}
+		Renderer::UseShader(ShaderMode::ComputeNormal);
+		glBindImageTexture(0, readFromFirst ? fourierBufferTex1 : fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+		glBindImageTexture(1, fourierNormalHeightTex, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+		Renderer::SetInt("heightTex", 0);
+		Renderer::SetInt("normalHeightTex", 1);
+		Renderer::SetUint("fourierGridSize", FOURIER_GRID_SIZE);
+		glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE, 1);
+
 		Renderer::UseShader(ShaderMode::SurfaceHeightMap);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, fourierHeightTex);
+		glBindTexture(GL_TEXTURE_2D, fourierNormalHeightTex);
 		//glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, freqWaveData);
-		Renderer::SetInt("heightTex", 0);
+		Renderer::SetInt("normalHeightTex", 0);
 		waterPlane.Render();
 
 		// TODO: end debug computing
