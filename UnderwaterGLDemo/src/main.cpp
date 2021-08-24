@@ -121,8 +121,8 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	float fourierAmp = 1.0f;
-	float fourierWindSpeed = 30.0f, fourierWindAngle = 30.0f;
+	float fourierAmp = 0.2f;
+	float fourierWindSpeed = 100.0f, fourierWindAngle = 30.0f;
 	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, freqWaveData);
 	if (SAVE_FOURIER_DEBUG)
 	{
@@ -444,14 +444,22 @@ void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, flo
 	{
 		for (int j = 0; j < FOURIER_GRID_SIZE; j++)
 		{
-			// TODO: suppress small waves
-			glm::vec2 kVec{ (float)i / FOURIER_GRID_SIZE - 0.5f, (float)j / FOURIER_GRID_SIZE - 0.5f }, kNorm = glm::normalize(kVec);
-			float kSq = glm::dot(kVec, kVec), k = sqrt(kSq);
-			float ampExp = amplitude * exp(-1.0f / (kSq * L * L));
-			float sqrtPhOver2 = sqrt(ampExp) * glm::dot(kNorm, windDir) / kSq;
-			freqWaveData[i + FOURIER_GRID_SIZE * j][0] = phillipsParamDist(engine) * sqrtPhOver2;
-			freqWaveData[i + FOURIER_GRID_SIZE * j][1] = phillipsParamDist(engine) * sqrtPhOver2;
-			freqWaveData[i + FOURIER_GRID_SIZE * j][2] = sqrt(GRAVITY * k); // TODO: other terms
+			int index = i + FOURIER_GRID_SIZE * j;
+			if (i == FOURIER_GRID_SIZE_HALF && j == FOURIER_GRID_SIZE_HALF)
+			{
+				freqWaveData[index][0] = freqWaveData[index][1] = freqWaveData[index][2] = 0.0f;
+			}
+			else
+			{
+				// TODO: suppress small waves
+				glm::vec2 kVec{ (float)i / FOURIER_GRID_SIZE - 0.5f, (float)j / FOURIER_GRID_SIZE - 0.5f }, kNorm = glm::normalize(kVec);
+				float kSq = glm::dot(kVec, kVec), k = sqrt(kSq);
+				float ampExp = amplitude * exp(-1.0f / (kSq * L * L));
+				float sqrtPhOver2 = sqrt(ampExp) * glm::dot(kNorm, windDir) / kSq;
+				freqWaveData[index][0] = phillipsParamDist(engine) * sqrtPhOver2;
+				freqWaveData[index][1] = phillipsParamDist(engine) * sqrtPhOver2;
+				freqWaveData[index][2] = sqrt(GRAVITY * k); // TODO: other terms
+			}
 		}
 	}
 }
@@ -461,8 +469,9 @@ void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE_HALF 
 	// level 0 - bit reversal of index
 	for (int i = 0; i < FOURIER_GRID_SIZE_HALF; i++)
 	{
-		coordLookup[i /*+ FOURIER_GRID_SIZE_HALF * 0*/][0] = ReverseBits(i, FOURIER_DIGIT_COUNT);
-		coordLookup[i /*+ FOURIER_GRID_SIZE_HALF * 0*/][1] = ReverseBits(i + FOURIER_GRID_SIZE_HALF, FOURIER_DIGIT_COUNT);
+		// index = i + FOURIER_GRID_SIZE_HALF * 0
+		coordLookup[i][0] = ReverseBits(i, FOURIER_DIGIT_COUNT);
+		coordLookup[i][1] = ReverseBits(i + FOURIER_GRID_SIZE_HALF, FOURIER_DIGIT_COUNT);
 	}
 	// remaining levels
 	int N = FOURIER_GRID_SIZE, level = FOURIER_DIGIT_COUNT;
@@ -473,8 +482,9 @@ void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE_HALF 
 		{
 			for (int j = 0; j < N / 2; i++, j++, k++)
 			{
-				coordLookup[i + FOURIER_GRID_SIZE_HALF * level][0] = k;
-				coordLookup[i + FOURIER_GRID_SIZE_HALF * level][1] = k + N / 2;
+				int index = i + FOURIER_GRID_SIZE_HALF * level;
+				coordLookup[index][0] = k;
+				coordLookup[index][1] = k + N / 2;
 			}
 			k += N / 2;
 		}

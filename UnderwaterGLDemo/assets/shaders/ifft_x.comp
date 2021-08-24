@@ -26,8 +26,6 @@ void main()
 	ivec2 pixelCoord2 = ivec2(actualCoordX.y, invocationCoord.y);
 	vec2 pixel1 = imageLoad(readTex, pixelCoord1).rg;
 	vec2 pixel2 = imageLoad(readTex, pixelCoord2).rg;
-	if (isnan(pixel1.r)) pixel1.r = 0;
-	if (isnan(pixel1.g)) pixel1.g = 0;
 
 	if (level == 0)
 	{
