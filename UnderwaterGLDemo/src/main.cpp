@@ -121,8 +121,8 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	float fourierAmp = 0.2f;
-	float fourierWindSpeed = 30.0f, fourierWindAngle = 30.0f;
+	float fourierAmp = 0.1f;
+	float fourierWindSpeed = 30.0f, fourierWindAngle = 90.0f;
 	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, freqWaveData);
 	if (SAVE_FOURIER_DEBUG)
 	{
@@ -437,6 +437,8 @@ void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, flo
 	glm::vec2 windDir{ cos(windAngleRad), sin(windAngleRad) };
 	float L = windSpeed * windSpeed / GRAVITY;
 
+	float smallLen = 2.0f; // TODO: param
+
 	for (int i = 0; i < FOURIER_GRID_SIZE; i++)
 	{
 		for (int j = 0; j < FOURIER_GRID_SIZE; j++)
@@ -448,10 +450,9 @@ void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, flo
 			}
 			else
 			{
-				// TODO: suppress small waves
 				glm::vec2 kVec{ (float)i / FOURIER_GRID_SIZE - 0.5f, (float)j / FOURIER_GRID_SIZE - 0.5f }, kNorm = glm::normalize(kVec);
 				float kSq = glm::dot(kVec, kVec), k = sqrt(kSq);
-				float ampExp = amplitude * exp(-1.0f / (kSq * L * L));
+				float ampExp = amplitude * exp(-1.0f / (kSq * L * L)) * exp(-kSq * smallLen * smallLen);
 				float sqrtPhOver2 = sqrt(ampExp) * glm::dot(kNorm, windDir) / kSq;
 				freqWaveData[index][0] = phillipsParamDist(engine) * sqrtPhOver2;
 				freqWaveData[index][1] = phillipsParamDist(engine) * sqrtPhOver2;

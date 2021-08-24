@@ -20,7 +20,7 @@ void main()
 	float pixelYPlus = imageLoad(heightTex, ivec2(pixelCoord.x, offsetYPlus)).r;
 	float pixelYMinus = imageLoad(heightTex, ivec2(pixelCoord.x, offsetYMinus)).r;
 
-	float gridCellSize = 1.0f;
+	float gridCellSize = 0.5f;
 	vec3 tan1 = normalize(vec3(gridCellSize, pixelXPlus - pixelXMinus, 0.0f));
 	vec3 tan2 = normalize(vec3(0.0f, pixelYPlus - pixelYMinus, gridCellSize));
 	vec4 normalHeight = vec4(cross(tan1, tan2), imageLoad(heightTex, pixelCoord));
