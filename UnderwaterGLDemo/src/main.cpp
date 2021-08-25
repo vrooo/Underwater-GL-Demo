@@ -173,6 +173,7 @@ int main()
 
 	float timeMult = 1.0f;
 	float lastTime = glfwGetTime(), simTime = 0;
+	bool useFourierWaves = false;
 	while (!glfwWindowShouldClose(window))
 	{
 		float t = glfwGetTime(), diffT = t - lastTime;
@@ -182,11 +183,6 @@ int main()
 		glClearColor(0.9f, 0.8f, 0.6f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		Renderer::UseShader(ShaderMode::SurfaceGerstner);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, waveTex);
-		Renderer::SetInt("waveTex", 0);
-
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
@@ -194,24 +190,8 @@ int main()
 		ImGui::Begin("Menu");
 		ImGui::Text("%.1f FPS, %.3f ms per frame", io.Framerate, 1000.0f / io.Framerate);
 		ImGui::SliderFloat("Time multiplier", &timeMult, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		simTime += timeMult * diffT;
 
-		ImGui::SliderInt("Wave count", &newWaveCount, 1, MAX_WAVE_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Min angle", &minAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Max angle", &maxAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Min amplitude", &minAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Max amplitude", &maxAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Min k", &minK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp); // TODO: wavelength or wind speed instead of k
-		ImGui::SliderFloat("Max k", &maxK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Depth", &d, 0.01f, DEPTH_INF, d == DEPTH_INF ? "Infinite" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat("Surface tension scale", &l, TENSION_NONE, 1.0f, l == TENSION_NONE ? "None" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
-
-		if (ImGui::Button("Regenerate waves"))
-		{
-			waveCount = newWaveCount;
-			GenerateGerstnerWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, gerstnerWaveData);
-			//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, waveCount, 2, GL_RGBA, GL_FLOAT, gerstnerWaveData);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, gerstnerWaveData); // TODO: why can't I sub only waveCount columns?
-		}
 		ImGui::SliderInt("Grid size", &gridVertexCount, MIN_GRID_SIZE, MAX_GRID_SIZE);
 		if (ImGui::Button("Regenerate grid"))
 		{
@@ -221,118 +201,142 @@ int main()
 		{
 			waterPlane.SetColor(waterColor);
 		}
-		ImGui::End();
 
-		Renderer::SetFloat("waveCount", waveCount);
-		simTime += timeMult * diffT;
-		Renderer::SetFloat("t", simTime);
-		// TODO: uncomment me
-		//waterPlane.Render();
-
-		// TODO: start debug computing
-		Renderer::UseShader(ShaderMode::ComputeFreqWave);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
-		Renderer::SetInt("freqWaveTex", 0);
-		//glActiveTexture(GL_TEXTURE1);
-		//glBindTexture(GL_TEXTURE_2D, curFreqWaveTex);
-		glBindImageTexture(0, curFreqWaveTex, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-		Renderer::SetInt("curFreqWaveTex", 0);
-		Renderer::SetFloat("t", simTime);
-		Renderer::SetFloat("fourierGridSizeFloat", FOURIER_GRID_SIZE);
-		glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE, 1);
-		glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
-		if (SAVE_FOURIER_DEBUG)
+		if (ImGui::Button(useFourierWaves ? "Gerstner waves" : "Fourier waves"))
 		{
-			glBindTexture(GL_TEXTURE_2D, curFreqWaveTex);
-			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_FLOAT, freqWaveData);
-			Debug_WriteImage();
+			useFourierWaves = !useFourierWaves;
 		}
 
-		Renderer::UseShader(ShaderMode::ComputeIFFTX);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
-		Renderer::SetInt("coordLookupTex", 0);
-		Renderer::SetUint("fourierGridSize", FOURIER_GRID_SIZE);
-		bool readFromFirst = true;
-		for (int level = 0, N = 1; N <= FOURIER_GRID_SIZE; level++, N *= 2)
+		if (useFourierWaves)
 		{
-			if (readFromFirst)
+			Renderer::UseShader(ShaderMode::ComputeFreqWave);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
+			Renderer::SetInt("freqWaveTex", 0);
+			glBindImageTexture(0, curFreqWaveTex, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
+			Renderer::SetInt("curFreqWaveTex", 0);
+			Renderer::SetFloat("t", simTime);
+			Renderer::SetFloat("fourierGridSizeFloat", FOURIER_GRID_SIZE);
+			glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE, 1);
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+			if (SAVE_FOURIER_DEBUG)
 			{
-				if (level == 0)
+				glBindTexture(GL_TEXTURE_2D, curFreqWaveTex);
+				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_FLOAT, freqWaveData);
+				Debug_WriteImage();
+			}
+
+			Renderer::UseShader(ShaderMode::ComputeIFFTX);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
+			Renderer::SetInt("coordLookupTex", 0);
+			Renderer::SetUint("fourierGridSize", FOURIER_GRID_SIZE);
+			bool readFromFirst = true;
+			for (int level = 0, N = 1; N <= FOURIER_GRID_SIZE; level++, N *= 2)
+			{
+				if (readFromFirst)
 				{
-					glBindImageTexture(0, curFreqWaveTex, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+					if (level == 0)
+					{
+						glBindImageTexture(0, curFreqWaveTex, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+					}
+					else
+					{
+						glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+					}
+					glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
 				}
 				else
 				{
-					glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+					glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+					glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
 				}
-				glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
+				readFromFirst = !readFromFirst;
+				Renderer::SetInt("readTex", 0);
+				Renderer::SetInt("writeTex", 1);
+				Renderer::SetUint("N", N);
+				Renderer::SetUint("level", level);
+				glDispatchCompute(FOURIER_GROUP_SIZE / 2, FOURIER_GROUP_SIZE, 1);
+				glMemoryBarrier(GL_ALL_BARRIER_BITS);
 			}
-			else
-			{
-				glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-				glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-			}
-			readFromFirst = !readFromFirst;
-			Renderer::SetInt("readTex", 0);
-			Renderer::SetInt("writeTex", 1);
-			Renderer::SetUint("N", N);
-			Renderer::SetUint("level", level);
-			glDispatchCompute(FOURIER_GROUP_SIZE / 2, FOURIER_GROUP_SIZE, 1);
-			glMemoryBarrier(GL_ALL_BARRIER_BITS);
-		}
 
-		Renderer::UseShader(ShaderMode::ComputeIFFTY);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
-		Renderer::SetInt("coordLookupTex", 0);
-		Renderer::SetUint("fourierGridSize", FOURIER_GRID_SIZE);
-		for (int level = 0, N = 1; N <= FOURIER_GRID_SIZE; level++, N *= 2)
+			Renderer::UseShader(ShaderMode::ComputeIFFTY);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
+			Renderer::SetInt("coordLookupTex", 0);
+			Renderer::SetUint("fourierGridSize", FOURIER_GRID_SIZE);
+			for (int level = 0, N = 1; N <= FOURIER_GRID_SIZE; level++, N *= 2)
+			{
+				if (N == FOURIER_GRID_SIZE)
+				{
+					Renderer::UseShader(ShaderMode::ComputeIFFTYLastPass);
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
+					Renderer::SetInt("coordLookupTex", 0);
+				}
+				if (readFromFirst)
+				{
+					glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+					glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
+				}
+				else
+				{
+					glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+					glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
+				}
+				readFromFirst = !readFromFirst;
+				Renderer::SetInt("readTex", 0);
+				Renderer::SetInt("writeTex", 1);
+				Renderer::SetUint("N", N);
+				Renderer::SetUint("level", level);
+				glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE / 2, 1);
+				glMemoryBarrier(GL_ALL_BARRIER_BITS);
+			}
+			Renderer::UseShader(ShaderMode::ComputeNormal);
+			glBindImageTexture(0, readFromFirst ? fourierBufferTex1 : fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
+			glBindImageTexture(1, fourierNormalHeightTex, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+			Renderer::SetInt("heightTex", 0);
+			Renderer::SetInt("normalHeightTex", 1);
+			Renderer::SetUint("fourierGridSize", FOURIER_GRID_SIZE);
+			glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE, 1);
+
+			Renderer::UseShader(ShaderMode::SurfaceHeightMap);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, fourierNormalHeightTex);
+			Renderer::SetInt("normalHeightTex", 0);
+		}
+		else
 		{
-			if (N == FOURIER_GRID_SIZE)
-			{
-				Renderer::UseShader(ShaderMode::ComputeIFFTYLastPass);
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
-				Renderer::SetInt("coordLookupTex", 0);
-			}
-			if (readFromFirst)
-			{
-				glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-				glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-			}
-			else
-			{
-				glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-				glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-			}
-			readFromFirst = !readFromFirst;
-			Renderer::SetInt("readTex", 0);
-			Renderer::SetInt("writeTex", 1);
-			Renderer::SetUint("N", N);
-			Renderer::SetUint("level", level);
-			glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE / 2, 1);
-			glMemoryBarrier(GL_ALL_BARRIER_BITS);
-		}
-		Renderer::UseShader(ShaderMode::ComputeNormal);
-		glBindImageTexture(0, readFromFirst ? fourierBufferTex1 : fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-		glBindImageTexture(1, fourierNormalHeightTex, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
-		Renderer::SetInt("heightTex", 0);
-		Renderer::SetInt("normalHeightTex", 1);
-		Renderer::SetUint("fourierGridSize", FOURIER_GRID_SIZE);
-		glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE, 1);
+			Renderer::UseShader(ShaderMode::SurfaceGerstner);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, waveTex);
+			Renderer::SetInt("waveTex", 0);
 
-		Renderer::UseShader(ShaderMode::SurfaceHeightMap);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, fourierNormalHeightTex);
-		//glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, freqWaveData);
-		Renderer::SetInt("normalHeightTex", 0);
+			ImGui::SliderInt("Wave count", &newWaveCount, 1, MAX_WAVE_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Min angle", &minAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Max angle", &maxAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Min amplitude", &minAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Max amplitude", &maxAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Min k", &minK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp); // TODO: wavelength or wind speed instead of k
+			ImGui::SliderFloat("Max k", &maxK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Depth", &d, 0.01f, DEPTH_INF, d == DEPTH_INF ? "Infinite" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Surface tension scale", &l, TENSION_NONE, 1.0f, l == TENSION_NONE ? "None" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
+
+			if (ImGui::Button("Regenerate waves"))
+			{
+				waveCount = newWaveCount;
+				GenerateGerstnerWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, gerstnerWaveData);
+				//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, waveCount, 2, GL_RGBA, GL_FLOAT, gerstnerWaveData);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, gerstnerWaveData); // TODO: why can't I sub only waveCount columns?
+			}
+
+			Renderer::SetFloat("waveCount", waveCount);
+			Renderer::SetFloat("t", simTime);
+		}
 		waterPlane.Render();
 
-		// TODO: end debug computing
-
+		ImGui::End();
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
