@@ -38,6 +38,8 @@ public:
 	static void TranslateCamera(float forward, float right, float up);
 	static void RotateCamera(float pitch, float yaw);
 
+	static unsigned int CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels);
+
 private:
 	static Shader* current; // TODO: this is ugly
 	static std::vector<Shader> shaders;

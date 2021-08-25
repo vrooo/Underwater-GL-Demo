@@ -114,12 +114,8 @@ int main()
 	float d = 10.0f, l = 0.0f;
 	GenerateGerstnerWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, gerstnerWaveData);
 
-	unsigned int waveTex;
-	glGenTextures(1, &waveTex);
-	glBindTexture(GL_TEXTURE_2D, waveTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, MAX_WAVE_COUNT, 2, 0, GL_RGBA, GL_FLOAT, gerstnerWaveData);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	unsigned int waveTex =
+		Renderer::CreateTexture2D(MAX_WAVE_COUNT, 2, GL_RGBA32F, GL_RGBA, GL_FLOAT, gerstnerWaveData);
 
 	float fourierAmp = 0.1f;
 	float fourierWindSpeed = 30.0f, fourierWindAngle = 90.0f;
@@ -131,45 +127,18 @@ int main()
 	}
 	GenerateFourierCoordLookup(fourierCoordLookup);
 
-	unsigned int initFreqWaveTex;
-	glGenTextures(1, &initFreqWaveTex);
-	glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RGB, GL_FLOAT, freqWaveData);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	unsigned int curFreqWaveTex;
-	glGenTextures(1, &curFreqWaveTex);
-	glBindTexture(GL_TEXTURE_2D, curFreqWaveTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RG, GL_FLOAT, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	unsigned int fourierCoordLookupTex;
-	glGenTextures(1, &fourierCoordLookupTex);
-	glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, FOURIER_GRID_SIZE_HALF, FOURIER_DIGIT_COUNT + 1, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, fourierCoordLookup);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	unsigned int fourierBufferTex1, fourierBufferTex2;
-	glGenTextures(1, &fourierBufferTex1);
-	glBindTexture(GL_TEXTURE_2D, fourierBufferTex1);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RG, GL_FLOAT, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glGenTextures(1, &fourierBufferTex2);
-	glBindTexture(GL_TEXTURE_2D, fourierBufferTex2);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RG, GL_FLOAT, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	unsigned int fourierNormalHeightTex;
-	glGenTextures(1, &fourierNormalHeightTex);
-	glBindTexture(GL_TEXTURE_2D, fourierNormalHeightTex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, 0, GL_RGBA, GL_FLOAT, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	unsigned int initFreqWaveTex =
+		Renderer::CreateTexture2D(FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, GL_RGB32F, GL_RGB, GL_FLOAT, freqWaveData);
+	unsigned int curFreqWaveTex =
+		Renderer::CreateTexture2D(FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, GL_RG32F, GL_RG, GL_FLOAT, nullptr);
+	unsigned int fourierCoordLookupTex =
+		Renderer::CreateTexture2D(FOURIER_GRID_SIZE_HALF, FOURIER_DIGIT_COUNT + 1, GL_RG16UI, GL_RG_INTEGER, GL_UNSIGNED_INT, fourierCoordLookup);
+	unsigned int fourierBufferTex1 =
+		Renderer::CreateTexture2D(FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, GL_RG32F, GL_RG, GL_FLOAT, nullptr);
+	unsigned int fourierBufferTex2 =
+		Renderer::CreateTexture2D(FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, GL_RG32F, GL_RG, GL_FLOAT, nullptr);
+	unsigned int fourierNormalHeightTex =
+		Renderer::CreateTexture2D(FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
 
 
 	float timeMult = 1.0f;
@@ -210,6 +179,7 @@ int main()
 
 		if (useFourierWaves)
 		{
+			// FOURIER WAVES
 			Renderer::UseShader(ShaderMode::ComputeFreqWave);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
@@ -320,6 +290,7 @@ int main()
 		}
 		else
 		{
+			// GERSTNER WAVES
 			Renderer::UseShader(ShaderMode::SurfaceGerstner);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, waveTex);
