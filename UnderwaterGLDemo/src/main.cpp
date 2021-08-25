@@ -52,7 +52,7 @@ void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
 void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
 				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4]);
-void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3]);
+void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float smallWaveLen, float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3]);
 void GenerateFourierCoordLookup(unsigned int coordLookup[FOURIER_GRID_SIZE_HALF * (FOURIER_DIGIT_COUNT + 1)][2]);
 int ReverseBits(int val, int digitCount);
 void Debug_WriteImage();
@@ -123,7 +123,8 @@ int main()
 
 	float fourierAmp = 0.1f;
 	float fourierWindSpeed = 30.0f, fourierWindAngle = 90.0f;
-	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, freqWaveData);
+	float fourierSmallWave = 2.0f;
+	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, freqWaveData);
 	if (SAVE_FOURIER_DEBUG)
 	{
 		Debug_WriteImage();
@@ -213,6 +214,17 @@ int main()
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
 			Renderer::SetInt("freqWaveTex", 0);
+
+			ImGui::SliderFloat("Amplitude", &fourierAmp, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Wind speed", &fourierWindSpeed, 0.0f, 500.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Wind angle", &fourierWindAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Min wave length", &fourierSmallWave, 0.0f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			if (ImGui::Button("Regenerate waves"))
+			{
+				GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, freqWaveData);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, FOURIER_GRID_SIZE, FOURIER_GRID_SIZE, GL_RGB, GL_FLOAT, freqWaveData);
+			}
+
 			glBindImageTexture(0, curFreqWaveTex, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
 			Renderer::SetInt("curFreqWaveTex", 0);
 			Renderer::SetFloat("t", simTime);
@@ -431,7 +443,7 @@ void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float 
 	}
 }
 
-void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3])
+void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float smallWaveLen, float freqWaveData[FOURIER_GRID_SIZE * FOURIER_GRID_SIZE][3])
 {
 	static std::random_device randomDevice{};
 	static std::mt19937 engine{ randomDevice() };
@@ -440,8 +452,6 @@ void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, flo
 	float windAngleRad = glm::radians(windAngle);
 	glm::vec2 windDir{ cos(windAngleRad), sin(windAngleRad) };
 	float L = windSpeed * windSpeed / GRAVITY;
-
-	float smallLen = 2.0f; // TODO: param
 
 	for (int i = 0; i < FOURIER_GRID_SIZE; i++)
 	{
@@ -456,7 +466,7 @@ void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, flo
 			{
 				glm::vec2 kVec{ (float)i / FOURIER_GRID_SIZE - 0.5f, (float)j / FOURIER_GRID_SIZE - 0.5f }, kNorm = glm::normalize(kVec);
 				float kSq = glm::dot(kVec, kVec), k = sqrt(kSq);
-				float ampExp = amplitude * exp(-1.0f / (kSq * L * L)) * exp(-kSq * smallLen * smallLen);
+				float ampExp = amplitude * exp(-1.0f / (kSq * L * L)) * exp(-kSq * smallWaveLen * smallWaveLen);
 				float sqrtPhOver2 = sqrt(ampExp) * glm::dot(kNorm, windDir) / kSq;
 				freqWaveData[index][0] = phillipsParamDist(engine) * sqrtPhOver2;
 				freqWaveData[index][1] = phillipsParamDist(engine) * sqrtPhOver2;
