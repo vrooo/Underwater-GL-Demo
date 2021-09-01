@@ -438,10 +438,15 @@ void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, flo
 				glm::vec2 kVec{ (float)i / FOURIER_GRID_SIZE - 0.5f, (float)j / FOURIER_GRID_SIZE - 0.5f }, kNorm = glm::normalize(kVec);
 				float kSq = glm::dot(kVec, kVec), k = sqrt(kSq);
 				float ampExp = amplitude * exp(-1.0f / (kSq * L * L)) * exp(-kSq * smallWaveLen * smallWaveLen);
-				float sqrtPhOver2 = sqrt(ampExp) * glm::dot(kNorm, windDir) / kSq;
+				float sqrtPhOver2 = sqrt(ampExp) * glm::dot(kNorm, windDir) / (2 * kSq);
 				freqWaveData[index][0] = phillipsParamDist(engine) * sqrtPhOver2;
 				freqWaveData[index][1] = phillipsParamDist(engine) * sqrtPhOver2;
-				freqWaveData[index][2] = sqrt(GRAVITY * k); // TODO: other terms
+				freqWaveData[index][2] = sqrt(GRAVITY * k);
+				// TODO: debug stuff
+				/*if (kNorm.x < 0 || kNorm.y < 0)
+				{
+					freqWaveData[index][0] = freqWaveData[index][1] = freqWaveData[index][2] = 0;
+				}*/
 			}
 		}
 	}

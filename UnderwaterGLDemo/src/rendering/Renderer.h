@@ -41,7 +41,9 @@ public:
 	static unsigned int CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels);
 
 private:
-	static Shader* current; // TODO: this is ugly
+	static void AddShaderIncludeDir(const char* dir);
+
+	static Shader* current;
 	static std::vector<Shader> shaders;
 
 	static glm::vec3 sceneBoundary;

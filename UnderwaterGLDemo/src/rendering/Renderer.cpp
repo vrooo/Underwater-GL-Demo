@@ -1,6 +1,10 @@
 #include "Renderer.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <GLFW/glfw3.h>
+
+#include <filesystem>
+#include <fstream>
 
 Shader* Renderer::current = nullptr;
 std::vector<Shader> Renderer::shaders{};
@@ -14,6 +18,12 @@ glm::vec3 Renderer::cameraForward{ 0.0f, 0.0f, -1.0f };
 float Renderer::cameraPitch = 0.0f;
 float Renderer::cameraYaw = 0.0f;
 
+#define GL_SHADER_INCLUDE_ARB 0x8DAE
+typedef void (*NamedStringARBPtr)(GLenum, GLint, const char*, GLint, const char*);
+NamedStringARBPtr glNamedStringARB;
+//typedef void (*CompileShaderIncludeARBPtr)(GLuint, GLsizei, const char* const*, const int*);
+//CompileShaderIncludeARBPtr glCompileShaderIncludeARB;
+
 const float FOV = glm::half_pi<float>();
 const float Z_NEAR = 0.1f, Z_FAR = 100.0f;
 
@@ -23,6 +33,9 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 	glEnable(GL_DEPTH_TEST);
 	sceneBoundary = boundary;
 	P = glm::perspectiveFov(FOV, width, height, Z_NEAR, Z_FAR);
+
+	glNamedStringARB = reinterpret_cast<NamedStringARBPtr>(glfwGetProcAddress("glNamedStringARB"));
+	AddShaderIncludeDir("assets/shaders/include");
 
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/pass.vert", "assets/shaders/pass.frag"));			// ShaderMode::PassThrough
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/mvp.vert", "assets/shaders/pass.frag"));			// ShaderMode::Basic
@@ -116,4 +129,25 @@ unsigned int Renderer::CreateTexture2D(GLsizei width, GLsizei height, GLint inte
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	return texture;
+}
+
+void Renderer::AddShaderIncludeDir(const char* dir)
+{
+	for (const auto& entry : std::filesystem::directory_iterator(dir))
+	{
+		auto path = entry.path();
+		auto filename = path.filename().string();
+
+		auto virtualPath = std::string("/") + filename;
+
+		std::ifstream fileStream;
+		fileStream.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+		fileStream.open(path.string().c_str());
+		std::ostringstream stringStream;
+		stringStream << fileStream.rdbuf();
+		fileStream.close();
+		std::string file = stringStream.str();
+
+		glNamedStringARB(GL_SHADER_INCLUDE_ARB, virtualPath.length(), virtualPath.c_str(), file.length(), file.c_str());
+	}
 }
