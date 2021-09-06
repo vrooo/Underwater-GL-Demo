@@ -17,7 +17,8 @@ enum class ShaderMode
 	ComputeIFFTX,
 	ComputeIFFTY,
 	ComputeIFFTYLastPass,
-	ComputeNormal
+	ComputeNormal,
+	ComputeNormalSobel
 };
 
 class Renderer

@@ -13,14 +13,26 @@ void main()
 	ivec2 pixelCoord2 = ivec2(invocationCoord.x, actualCoordY.y);
 	vec2 pixel1 = imageLoad(readTex, pixelCoord1).rg;
 	vec2 pixel2 = imageLoad(readTex, pixelCoord2).rg;
+	vec4 pixelSlope1 = imageLoad(readSlopeTex, pixelCoord1);
+	vec4 pixelSlope2 = imageLoad(readSlopeTex, pixelCoord2);
 
 	vec4 res = pass(pixel1, pixel2, invocationCoord.y);
 	vec2 res1 = res.xy, res2 = res.zw;
+	vec4 resSlopeX = pass(pixelSlope1.xy, pixelSlope2.xy, invocationCoord.y);
+	vec2 resSlopeX1 = resSlopeX.xy, resSlopeX2 = resSlopeX.zw;
+	vec4 resSlopeY = pass(pixelSlope1.zw, pixelSlope2.zw, invocationCoord.y);
+	vec2 resSlopeY1 = resSlopeY.xy, resSlopeY2 = resSlopeY.zw;
 
 	// conjugate and scale
-	res1 = vec2(res1.x, -res1.y) / N;
-	res2 = vec2(res2.x, -res2.y) / N;
+	res1 = conjAndScale(res1);
+	res2 = conjAndScale(res2);
+	resSlopeX1 = conjAndScale(resSlopeX1);
+	resSlopeX2 = conjAndScale(resSlopeX2);
+	resSlopeY1 = conjAndScale(resSlopeY1);
+	resSlopeY2 = conjAndScale(resSlopeY2);
 
 	imageStore(writeTex, pixelCoord1, vec4(length(res1), 0.0f, 0.0f, 1.0f));
 	imageStore(writeTex, pixelCoord2, vec4(length(res2), 0.0f, 0.0f, 1.0f));
+	imageStore(writeSlopeTex, pixelCoord1, vec4(length(resSlopeX1), length(resSlopeY1), 0.0f, 1.0f));
+	imageStore(writeSlopeTex, pixelCoord2, vec4(length(resSlopeX2), length(resSlopeY2), 0.0f, 1.0f));
 }

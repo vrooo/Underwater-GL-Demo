@@ -46,6 +46,7 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y.comp"));								// ShaderMode::ComputeIFFTY
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y_last.comp"));							// ShaderMode::ComputeIFFTYLastPass
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normal.comp"));								// ShaderMode::ComputeNormal
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normalSobel.comp"));							// ShaderMode::ComputeNormalSobel
 	UseShader(ShaderMode::PassThrough);
 }
 
