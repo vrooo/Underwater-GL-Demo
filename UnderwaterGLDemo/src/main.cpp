@@ -23,14 +23,16 @@
 
 const unsigned int WINDOW_WIDTH = 1600;
 const unsigned int WINDOW_HEIGHT = 900;
-const float SCENE_SIZE = 50.0f;
+const float MIN_SCENE_SIZE = 1.0f;
+const float MAX_SCENE_SIZE = 100.0f;
+const float SCENE_MOVE_BUFFER = 10.0f;
 const float SCENE_HEIGHT = 30.0f;
 const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
 const unsigned int MAX_WAVE_COUNT = 100;
-const unsigned int MIN_GRID_SIZE = 10;
-const unsigned int MAX_GRID_SIZE = 2000;
+const unsigned int MIN_GRID_COUNT = 10;
+const unsigned int MAX_GRID_COUNT = 2000;
 const unsigned int FOURIER_GRID_SIZE = 512;
 const unsigned int FOURIER_GRID_SIZE_HALF = FOURIER_GRID_SIZE / 2;
 const unsigned int FOURIER_DIGIT_COUNT = 9; // log2(FOURIER_GRID_SIZE)
@@ -85,7 +87,7 @@ int main()
 
 	try
 	{
-		Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT, glm::vec3{ SCENE_SIZE / 2, SCENE_HEIGHT, SCENE_SIZE / 2 });
+		Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT, glm::vec3{ MAX_SCENE_SIZE / 2 + SCENE_MOVE_BUFFER, SCENE_HEIGHT, MAX_SCENE_SIZE / 2 + SCENE_MOVE_BUFFER });
 	}
 	catch(std::exception const& e)
 	{
@@ -105,7 +107,8 @@ int main()
 	float waterColor[]{ 0.2f, 0.3f, 0.3f };
 	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
 	int gridVertexCount = 500;
-	Plane waterPlane = Plane::MakeXZPlane(SCENE_SIZE, SCENE_SIZE, gridVertexCount, gridVertexCount, defWaterColor);
+	float sceneSize = 50.0f;
+	Plane waterPlane = Plane::MakeXZPlane(sceneSize, sceneSize, gridVertexCount, gridVertexCount, defWaterColor);
 
 	int waveCount = 20, newWaveCount = 20;
 	float minAngle = 0.0f, maxAngle = 360.0f;
@@ -148,7 +151,8 @@ int main()
 	float timeMult = 1.0f;
 	float lastTime = glfwGetTime(), simTime = 0;
 	bool useFourierWaves = false;
-	bool useFourierSobelNormals = false;
+	//bool useFourierSobelNormals = false;
+	bool useFourierSobelNormals = true;
 	while (!glfwWindowShouldClose(window))
 	{
 		float t = glfwGetTime(), diffT = t - lastTime;
@@ -167,10 +171,11 @@ int main()
 		ImGui::SliderFloat("Time multiplier", &timeMult, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		simTime += timeMult * diffT;
 
-		ImGui::SliderInt("Grid size", &gridVertexCount, MIN_GRID_SIZE, MAX_GRID_SIZE);
-		if (ImGui::Button("Regenerate grid"))
+		ImGui::SliderFloat("Surface size", &sceneSize, MIN_SCENE_SIZE, MAX_SCENE_SIZE, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderInt("Grid count", &gridVertexCount, MIN_GRID_COUNT, MAX_GRID_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::Button("Regenerate surface"))
 		{
-			waterPlane.Recreate(SCENE_SIZE, SCENE_SIZE, gridVertexCount, gridVertexCount);
+			waterPlane.Recreate(sceneSize, sceneSize, gridVertexCount, gridVertexCount);
 		}
 		if (ImGui::ColorEdit3("Surface color", waterColor))
 		{
@@ -190,10 +195,11 @@ int main()
 			glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
 			Renderer::SetInt("freqWaveTex", 0);
 
-			if (ImGui::Button(useFourierSobelNormals ? "IFFT normals" : "Sobel normals"))
+			// TODO: restore button and set default value to false
+			/*if (ImGui::Button(useFourierSobelNormals ? "IFFT normals" : "Sobel normals"))
 			{
 				useFourierSobelNormals = !useFourierSobelNormals;
-			}
+			}*/
 			ImGui::SliderFloat("Amplitude", &fourierAmp, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Wind speed", &fourierWindSpeed, 0.0f, 500.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Wind angle", &fourierWindAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
