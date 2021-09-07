@@ -212,8 +212,8 @@ int main()
 
 			glBindImageTexture(0, curFreqWaveTex, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
 			Renderer::SetInt("curFreqWaveTex", 0);
+			Renderer::SetInt("fourierGridSize", FOURIER_GRID_SIZE);
 			Renderer::SetFloat("t", simTime);
-			Renderer::SetFloat("fourierGridSizeFloat", FOURIER_GRID_SIZE);
 			glDispatchCompute(FOURIER_GROUP_SIZE, FOURIER_GROUP_SIZE, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
