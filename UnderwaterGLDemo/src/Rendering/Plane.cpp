@@ -1,66 +1,10 @@
-#include "Mesh.h"
+#include "Plane.h"
 
 #include "Renderer.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 Plane::Plane(std::vector<PositionTexCoordVertex>& vert, std::vector<unsigned int>& ind, glm::vec3& col) :
-	vertices{ vert },
-	indices{ ind },
-	color{ col },
-	position{}, rotation{}, scale{1.0f}
-{
-	auto vertexTypeSize = sizeof(PositionTexCoordVertex);
-
-	glGenVertexArrays(1, &vao);
-	glGenBuffers(1, &vbo);
-	glGenBuffers(1, &ebo);
-
-	glBindVertexArray(vao);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * vertexTypeSize, &vertices[0], GL_DYNAMIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_DYNAMIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexTypeSize, (void*)0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexTypeSize, (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-}
-
-void Plane::Render()
-{
-	// TODO: actual model matrix and color
-	glm::mat4 M{ 1.0f };
-	M = glm::scale(M, glm::vec3{ scale });
-	
-	Renderer::SetMat4("M", M);
-	Renderer::SetVec3("color", color);
-
-	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-}
-
-void Plane::SetColor(glm::vec3& newCol)
-{
-	color = newCol;
-}
-
-void Plane::SetColor(float r, float g, float b)
-{
-	color = glm::vec3(r, g, b);
-}
-
-void Plane::SetColor(float newCol[3])
-{
-	color = glm::vec3(newCol[0], newCol[1], newCol[2]);
-}
-
-void Plane::SetScale(float newScale)
-{
-	scale = newScale;
-}
+	Mesh(vert, ind, col) { }
 
 void Plane::Recreate(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ)
 {
@@ -96,14 +40,7 @@ void Plane::Recreate(float sizeX, float sizeZ, unsigned int vertX, unsigned int 
 		}
 	}
 
-	auto vertexTypeSize = sizeof(PositionTexCoordVertex);
-	glBindVertexArray(vao);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * vertexTypeSize, &vertices[0], GL_DYNAMIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_DYNAMIC_DRAW);
+	UpdateBuffers();
 }
 
 Plane Plane::MakeXZPlane(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ, glm::vec3& col)

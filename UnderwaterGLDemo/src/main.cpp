@@ -15,7 +15,7 @@
 #define cimg_use_tiff
 #include <CImg/CImg.h>
 
-#include "Rendering/Mesh.h"
+#include "Rendering/Plane.h"
 #include "Rendering/Shader.h"
 #include "Rendering/Renderer.h"
 
