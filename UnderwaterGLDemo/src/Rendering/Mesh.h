@@ -16,7 +16,7 @@ private:
 
 	glm::vec3 position;
 	glm::vec3 rotation;
-	glm::vec3 scale;
+	float scale;
 	glm::vec3 color;
 public:
 	Plane(std::vector<PositionTexCoordVertex>& vert, std::vector<unsigned int>& ind, glm::vec3& col);
@@ -24,6 +24,7 @@ public:
 	void SetColor(glm::vec3& newCol);
 	void SetColor(float r, float g, float b);
 	void SetColor(float newCol[3]);
+	void SetScale(float newScale);
 
 	void Recreate(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ);
 	static Plane MakeXZPlane(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ, glm::vec3& col);

@@ -12,9 +12,9 @@ std::vector<Shader> Renderer::shaders{};
 glm::vec3 Renderer::sceneBoundary{};
 
 glm::mat4 Renderer::P{ 0.1f };
-glm::vec3 Renderer::cameraPos{ 0.0f, 10.0f, 0.0f };
+glm::vec3 Renderer::cameraPos{ 0.0f, 5.0f, -15.0f };
 glm::vec3 Renderer::cameraUp{ 0.0f, 1.0f, 0.0f };
-glm::vec3 Renderer::cameraForward{ 0.0f, 0.0f, -1.0f };
+glm::vec3 Renderer::cameraForward{ 0.0f, 0.0f, 1.0f };
 float Renderer::cameraPitch = 0.0f;
 float Renderer::cameraYaw = 0.0f;
 
@@ -25,7 +25,7 @@ NamedStringARBPtr glNamedStringARB;
 //CompileShaderIncludeARBPtr glCompileShaderIncludeARB;
 
 const float FOV = glm::half_pi<float>();
-const float Z_NEAR = 0.1f, Z_FAR = 100.0f;
+const float Z_NEAR = 0.5f, Z_FAR = 200.0f;
 
 void Renderer::Init(float width, float height, glm::vec3 boundary)
 {
@@ -75,9 +75,9 @@ void Renderer::RotateCamera(float pitch, float yaw)
 	float yawRad = glm::radians(cameraYaw);
 	float pitchRad = glm::radians(cameraPitch);
 
-	cameraForward.x = cos(yawRad) * cos(pitchRad);
+	cameraForward.x = sin(yawRad) * cos(pitchRad);
 	cameraForward.y = sin(pitchRad);
-	cameraForward.z = sin(yawRad) * cos(pitchRad);
+	cameraForward.z = cos(yawRad) * cos(pitchRad);
 	cameraForward = glm::normalize(cameraForward);
 }
 

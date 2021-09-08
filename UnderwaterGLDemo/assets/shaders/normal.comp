@@ -13,6 +13,6 @@ void main()
     float height = imageLoad(heightTex, pixelCoord).r;
     vec2 slope = imageLoad(slopeTex, pixelCoord).rg;
 
-    vec4 normalHeight = vec4(normalize(vec3(-slope.x, 0.1, -slope.y)), height);
+    vec4 normalHeight = vec4(normalize(vec3(-slope.x, 1, -slope.y)), height);
     imageStore(normalHeightTex, pixelCoord, normalHeight);
 }

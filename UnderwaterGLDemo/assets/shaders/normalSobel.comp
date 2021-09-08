@@ -28,7 +28,7 @@ void main()
 
     // sobel
     float sobelX = (tr + 2.0 * cr + br) - (tl + 2.0 * cl + bl);
-    float sobelY = 0.1f;
+    float sobelY = 0.5f;
     float sobelZ = (bl + 2.0 * cb + br) - (tl + 2.0 * ct + tr);
 
     vec4 normalHeight = vec4(normalize(vec3(sobelX, sobelY, sobelZ)), imageLoad(heightTex, pixelCoord).r);

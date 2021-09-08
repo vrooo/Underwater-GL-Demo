@@ -1,6 +1,7 @@
 #include "Mesh.h"
 
 #include "Renderer.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 Plane::Plane(std::vector<PositionTexCoordVertex>& vert, std::vector<unsigned int>& ind, glm::vec3& col) :
 	vertices{ vert },
@@ -23,7 +24,6 @@ Plane::Plane(std::vector<PositionTexCoordVertex>& vert, std::vector<unsigned int
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_DYNAMIC_DRAW);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexTypeSize, (void*)0);
-	//glVertexAttribIPointer(1, 2, GL_INT, vertexTypeSize, (void*)(3 * sizeof(float)));
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexTypeSize, (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -33,6 +33,8 @@ void Plane::Render()
 {
 	// TODO: actual model matrix and color
 	glm::mat4 M{ 1.0f };
+	M = glm::scale(M, glm::vec3{ scale });
+	
 	Renderer::SetMat4("M", M);
 	Renderer::SetVec3("color", color);
 
@@ -53,6 +55,11 @@ void Plane::SetColor(float r, float g, float b)
 void Plane::SetColor(float newCol[3])
 {
 	color = glm::vec3(newCol[0], newCol[1], newCol[2]);
+}
+
+void Plane::SetScale(float newScale)
+{
+	scale = newScale;
 }
 
 void Plane::Recreate(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ)

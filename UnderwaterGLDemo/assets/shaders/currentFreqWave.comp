@@ -5,13 +5,13 @@ layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 uniform sampler2D freqWaveTex;
 layout (rg32f) uniform writeonly image2D curFreqWaveTex;
 uniform float t;
-uniform int fourierGridSize;
+uniform uint fourierGridSize;
 
 void main()
 {
 	ivec2 texCoord = ivec2(gl_GlobalInvocationID.xy);
 	vec4 freqWaveInfo = texelFetch(freqWaveTex, texCoord, 0); // h0.x, h0.y, omega
-	vec2 h0 = freqWaveInfo.rg, h0neg = texelFetch(freqWaveTex, fourierGridSize - texCoord, 0).rg;
+	vec2 h0 = freqWaveInfo.rg, h0neg = texelFetch(freqWaveTex, int(fourierGridSize) - texCoord, 0).rg;
 	float omega = freqWaveInfo.b;
 
 	float phase = omega * t, sinp = sin(phase), cosp = cos(phase);

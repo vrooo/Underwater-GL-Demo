@@ -33,14 +33,10 @@ const float CAM_ROTATE_SPEED = 0.1f;
 const unsigned int MAX_WAVE_COUNT = 100;
 const unsigned int MIN_GRID_COUNT = 10;
 const unsigned int MAX_GRID_COUNT = 2000;
-//const unsigned int FOURIER_GRID_SIZE = 512;
-//const unsigned int FOURIER_GRID_SIZE_HALF = FOURIER_GRID_SIZE / 2;
-//const unsigned int FOURIER_DIGIT_COUNT = 9; // log2(FOURIER_GRID_SIZE)
-const unsigned int MIN_FOURIER_POWER = 5;
+const unsigned int MIN_FOURIER_POWER = 6;
 const unsigned int MAX_FOURIER_POWER = 11;
 const unsigned int MAX_FOURIER_GRID_SIZE = 1 << MAX_FOURIER_POWER;
 const unsigned int FOURIER_COMPUTE_CHUNK = 32;
-//const unsigned int FOURIER_GROUP_SIZE = FOURIER_GRID_SIZE / FOURIER_COMPUTE_CHUNK;
 
 const float DEPTH_INF = 100.0f;
 const float TENSION_NONE = 0.0f;
@@ -57,7 +53,7 @@ void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
 void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
 				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4]);
-void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float smallWaveLen, unsigned int fourierGridSize);
+void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float smallWaveLen, unsigned int fourierGridSize, float patchSize);
 void GenerateFourierCoordLookup(unsigned int fourierGridSize, int fourierPower);
 int ReverseBits(int val, int digitCount);
 void Debug_WriteImage(unsigned int fourierGridSize);
@@ -110,8 +106,9 @@ int main()
 	float waterColor[]{ 0.2f, 0.3f, 0.3f };
 	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
 	int gridVertexCount = 500;
-	float sceneSize = 50.0f;
-	Plane waterPlane = Plane::MakeXZPlane(sceneSize, sceneSize, gridVertexCount, gridVertexCount, defWaterColor);
+	float sceneSize = 20.0f;
+	Plane waterPlane = Plane::MakeXZPlane(1.0f, 1.0f, gridVertexCount, gridVertexCount, defWaterColor);
+	waterPlane.SetScale(sceneSize);
 
 	int waveCount = 20, newWaveCount = 20;
 	float minAngle = 0.0f, maxAngle = 360.0f;
@@ -123,12 +120,12 @@ int main()
 	unsigned int waveTex =
 		Renderer::CreateTexture2D(MAX_WAVE_COUNT, 2, GL_RGBA32F, GL_RGBA, GL_FLOAT, gerstnerWaveData);
 
-	float fourierAmp = 0.1f;
-	float fourierWindSpeed = 30.0f, fourierWindAngle = 90.0f;
-	float fourierSmallWave = 2.0f;
+	float fourierAmp = 1000000.0f;
+	float fourierWindSpeed = 100.0f, fourierWindAngle = 135.0f;
+	float fourierSmallWave = 0.01f;
 	int fourierPower = 9;
 	unsigned int fourierGridSize = 1 << fourierPower;
-	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierPower);
+	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierGridSize, sceneSize);
 	if (SAVE_FOURIER_DEBUG)
 	{
 		Debug_WriteImage(fourierGridSize);
@@ -156,9 +153,7 @@ int main()
 
 	float timeMult = 1.0f;
 	float lastTime = glfwGetTime(), simTime = 0;
-	bool useFourierWaves = false;
-	//bool useFourierSobelNormals = false;
-	bool useFourierSobelNormals = true;
+	bool useFourierWaves = false, useFourierSobelNormals = true, fourierGridSizeChanged = false;
 	while (!glfwWindowShouldClose(window))
 	{
 		float t = glfwGetTime(), diffT = t - lastTime;
@@ -177,11 +172,14 @@ int main()
 		ImGui::SliderFloat("Time multiplier", &timeMult, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		simTime += timeMult * diffT;
 
-		ImGui::SliderFloat("Surface size", &sceneSize, MIN_SCENE_SIZE, MAX_SCENE_SIZE, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::SliderFloat("Surface size", &sceneSize, MIN_SCENE_SIZE, MAX_SCENE_SIZE, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+		{
+			waterPlane.SetScale(sceneSize);
+		}
 		ImGui::SliderInt("Grid count", &gridVertexCount, MIN_GRID_COUNT, MAX_GRID_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::Button("Regenerate surface"))
 		{
-			waterPlane.Recreate(sceneSize, sceneSize, gridVertexCount, gridVertexCount);
+			waterPlane.Recreate(1.0f, 1.0f, gridVertexCount, gridVertexCount);
 		}
 		if (ImGui::ColorEdit3("Surface color", waterColor))
 		{
@@ -197,44 +195,46 @@ int main()
 		{
 			// FOURIER WAVES
 			Renderer::UseShader(ShaderMode::ComputeFreqWave);
-			glActiveTexture(GL_TEXTURE0);
-			Renderer::SetInt("freqWaveTex", 0);
 
-			// TODO: restore button and set default value to false
-			/*if (ImGui::Button(useFourierSobelNormals ? "IFFT normals" : "Sobel normals"))
+			if (ImGui::Button(useFourierSobelNormals ? "IFFT normals" : "Sobel normals"))
 			{
 				useFourierSobelNormals = !useFourierSobelNormals;
-			}*/
-			ImGui::SliderInt("Fourier grid size", &fourierPower, MIN_FOURIER_POWER, MAX_FOURIER_POWER, "%d", ImGuiSliderFlags_AlwaysClamp);
-			if (ImGui::Button("Regenerate Fourier grid and waves"))
-			{
-				fourierGridSize = 1 << fourierPower;
-
-				GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierGridSize);
-				glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGB, GL_FLOAT, freqWaveData);
-
-				GenerateFourierCoordLookup(fourierGridSize, fourierPower);
-				glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_FOURIER_GRID_SIZE / 2, MAX_FOURIER_POWER + 1, GL_RG_INTEGER, GL_UNSIGNED_INT, fourierCoordLookup);
-
-				fourierNormalHeightTex = Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
 			}
-			glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
+			std::string fourierGridSizeString = std::to_string(1 << fourierPower);
+			if (ImGui::SliderInt("Fourier grid size", &fourierPower, MIN_FOURIER_POWER, MAX_FOURIER_POWER, fourierGridSizeString.c_str(), ImGuiSliderFlags_AlwaysClamp))
+			{
+				fourierGridSizeChanged = true;
+			}
 
-			ImGui::SliderFloat("Amplitude", &fourierAmp, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Wind speed", &fourierWindSpeed, 0.0f, 500.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Frequency amplitude", &fourierAmp, 100.0f, 10000000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Wind speed", &fourierWindSpeed, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Wind angle", &fourierWindAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Min wave length", &fourierSmallWave, 0.0f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Min wave length", &fourierSmallWave, 0.0f, 50.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			if (ImGui::Button("Regenerate waves"))
 			{
-				GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierGridSize);
+				if (fourierGridSizeChanged)
+				{
+					fourierGridSizeChanged = false;
+					fourierGridSize = 1 << fourierPower;
+
+					GenerateFourierCoordLookup(fourierGridSize, fourierPower);
+					glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
+					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_FOURIER_GRID_SIZE / 2, MAX_FOURIER_POWER + 1, GL_RG_INTEGER, GL_UNSIGNED_INT, fourierCoordLookup);
+
+					fourierNormalHeightTex = Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
+
+				}
+				GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierGridSize, sceneSize);
+				glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGB, GL_FLOAT, freqWaveData);
 			}
 
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
+			Renderer::SetInt("freqWaveTex", 0);
 			glBindImageTexture(0, curFreqWaveTex, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
 			Renderer::SetInt("curFreqWaveTex", 0);
-			Renderer::SetInt("fourierGridSize", fourierGridSize);
+			Renderer::SetUint("fourierGridSize", fourierGridSize);
 			Renderer::SetFloat("t", simTime);
 
 			int fourierGroupSize = fourierGridSize / FOURIER_COMPUTE_CHUNK;
@@ -427,7 +427,7 @@ void ProcessMouse(GLFWwindow* window, double posX, double posY)
 {
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT))
 	{
-		Renderer::RotateCamera(CAM_ROTATE_SPEED * (lastY - posY), CAM_ROTATE_SPEED * (posX - lastX));
+		Renderer::RotateCamera(CAM_ROTATE_SPEED * (lastY - posY), CAM_ROTATE_SPEED * (lastX - posX));
 	}
 	lastX = posX;
 	lastY = posY;
@@ -440,7 +440,7 @@ void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float 
 	static std::random_device randomDevice{};
 	static std::mt19937 engine{ randomDevice() };
 
-	if (minAngle > maxAngle) std::swap(minAngle, maxAngle);
+	if (minAngle > maxAngle) maxAngle += 360.0f;
 	if (minAmp > maxAmp) std::swap(minAmp, maxAmp);
 	if (minK > maxK) std::swap(minK, maxK);
 
@@ -473,11 +473,12 @@ void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float 
 	}
 }
 
-void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float smallWaveLen, unsigned int fourierGridSize)
+void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float smallWaveLen, unsigned int fourierGridSize, float patchSize)
 {
 	static std::random_device randomDevice{};
 	static std::mt19937 engine{ randomDevice() };
 	static std::normal_distribution<float> phillipsParamDist{ 0.0f, 1.0f };
+	static float coordMult = glm::two_pi<float>() / 100.0f;
 
 	int halfGridSize = fourierGridSize / 2;
 
@@ -487,28 +488,27 @@ void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, flo
 
 	for (int i = 0; i < fourierGridSize; i++)
 	{
+		float kx = (i - halfGridSize) * coordMult;
 		for (int j = 0; j < fourierGridSize; j++)
 		{
-			//int index = i + fourierGridSize * j;
-			int index = j + MAX_FOURIER_GRID_SIZE * i;
-			if (i == halfGridSize && j == halfGridSize)
+			float ky = (j - halfGridSize) * coordMult;
+
+			int index = i + MAX_FOURIER_GRID_SIZE * j;
+			freqWaveData[index][0] = freqWaveData[index][1] = freqWaveData[index][2] = 0.0f;
+
+			//glm::vec2 kVec{ (float)i / fourierGridSize - 0.5f, (float)j / fourierGridSize - 0.5f };
+			glm::vec2 kVec{ kx, ky };
+			float k = glm::length(kVec);
+			if (k > 1e-8)
 			{
-				freqWaveData[index][0] = freqWaveData[index][1] = freqWaveData[index][2] = 0.0f;
-			}
-			else
-			{
-				glm::vec2 kVec{ (float)i / fourierGridSize - 0.5f, (float)j / fourierGridSize - 0.5f }, kNorm = glm::normalize(kVec);
-				float kSq = glm::dot(kVec, kVec), k = sqrt(kSq);
+				glm::vec2 kNorm = kVec / k;
+				if (glm::dot(kNorm, windDir) < 0) continue;
+				float kSq = k * k;
 				float ampExp = amplitude * exp(-1.0f / (kSq * L * L)) * exp(-kSq * smallWaveLen * smallWaveLen);
 				float sqrtPhOver2 = sqrt(ampExp) * glm::dot(kNorm, windDir) / (2 * kSq);
 				freqWaveData[index][0] = phillipsParamDist(engine) * sqrtPhOver2;
 				freqWaveData[index][1] = phillipsParamDist(engine) * sqrtPhOver2;
 				freqWaveData[index][2] = sqrt(GRAVITY * k);
-				// TODO: debug stuff
-				/*if (kNorm.x < 0 || kNorm.y < 0)
-				{
-					freqWaveData[index][0] = freqWaveData[index][1] = freqWaveData[index][2] = 0;
-				}*/
 			}
 		}
 	}
