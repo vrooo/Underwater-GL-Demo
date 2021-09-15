@@ -5,15 +5,16 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
-#include "Mesh.h"
+#include "Model.h"
 #include "Vertices.h"
 
-class Plane : public Mesh<PositionTexCoordVertex>
+class Plane : public Model<PositionTexVertex>
 {
 public:
-	Plane(std::vector<PositionTexCoordVertex>& vert, std::vector<unsigned int>& ind, glm::vec3& col);
+	Plane(Material mat, std::vector<PositionTexVertex>& vert, std::vector<unsigned int>& ind);
 	//void Render();
 
 	void Recreate(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ);
-	static Plane MakeXZPlane(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ, glm::vec3& col);
 };
+
+Plane MakeXZPlane(Material mat, float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ);

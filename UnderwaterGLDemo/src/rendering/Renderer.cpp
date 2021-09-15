@@ -12,17 +12,15 @@ std::vector<Shader> Renderer::shaders{};
 glm::vec3 Renderer::sceneBoundary{};
 
 glm::mat4 Renderer::P{ 0.1f };
-glm::vec3 Renderer::cameraPos{ 0.0f, 5.0f, -15.0f };
+glm::vec3 Renderer::cameraPos{ 0.0f, 5.0f, 15.0f };
 glm::vec3 Renderer::cameraUp{ 0.0f, 1.0f, 0.0f };
-glm::vec3 Renderer::cameraForward{ 0.0f, 0.0f, 1.0f };
+glm::vec3 Renderer::cameraForward{ 0.0f, 0.0f, -1.0f };
 float Renderer::cameraPitch = 0.0f;
-float Renderer::cameraYaw = 0.0f;
+float Renderer::cameraYaw = 180.0f;
 
 #define GL_SHADER_INCLUDE_ARB 0x8DAE
 typedef void (*NamedStringARBPtr)(GLenum, GLint, const char*, GLint, const char*);
 NamedStringARBPtr glNamedStringARB;
-//typedef void (*CompileShaderIncludeARBPtr)(GLuint, GLsizei, const char* const*, const int*);
-//CompileShaderIncludeARBPtr glCompileShaderIncludeARB;
 
 const float FOV = glm::half_pi<float>();
 const float Z_NEAR = 0.5f, Z_FAR = 200.0f;
@@ -38,9 +36,9 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 	AddShaderIncludeDir("assets/shaders/include");
 
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/pass.vert", "assets/shaders/pass.frag"));			// ShaderMode::PassThrough
-	shaders.push_back(Shader::CreateShaderVF("assets/shaders/mvp.vert", "assets/shaders/pass.frag"));			// ShaderMode::Basic
-	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surface.vert", "assets/shaders/surface.frag"));	// ShaderMode::SurfaceGerstner
-	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfHeight.vert", "assets/shaders/surface.frag"));	// ShaderMode::SurfaceHeightMap
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/phong.vert", "assets/shaders/phong.frag"));		// ShaderMode::Phong
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surface.vert", "assets/shaders/phong.frag"));		// ShaderMode::SurfaceGerstner
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfHeight.vert", "assets/shaders/phong.frag"));	// ShaderMode::SurfaceHeightMap
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/currentFreqWave.comp"));						// ShaderMode::ComputeFreqWave
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_x.comp"));								// ShaderMode::ComputeIFFTX
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y.comp"));								// ShaderMode::ComputeIFFTY

@@ -10,7 +10,7 @@
 enum class ShaderMode
 {
 	PassThrough,
-	Basic,
+	Phong,
 	SurfaceGerstner,
 	SurfaceHeightMap,
 	ComputeFreqWave,

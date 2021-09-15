@@ -10,7 +10,7 @@
 #include "Renderer.h"
 
 template <typename VertexType>
-class Mesh // TODO: Mesh<T> as base class
+class Mesh
 {
 private:
 	GLuint vbo, ebo, vao;
@@ -21,24 +21,24 @@ protected:
 	glm::vec3 position;
 	glm::vec3 rotation;
 	float scale;
-	glm::vec3 color;
 
-	void UpdateBuffers();
+	GLenum primitiveMode;
+
+	void CreateBuffers();
 public:
-	Mesh(std::vector<VertexType>& vert, std::vector<unsigned int>& ind, glm::vec3& col);
+	Mesh(std::vector<VertexType>& vert, std::vector<unsigned int>& ind, GLenum primitive = GL_TRIANGLES);
+	void ReplaceData(std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
 	void Render();
-	void SetColor(glm::vec3& newCol);
-	void SetColor(float r, float g, float b);
-	void SetColor(float newCol[3]);
 	void SetScale(float newScale);
+	void SetPosition(glm::vec3 newPos);
 };
 
 template<typename VertexType>
-inline Mesh<VertexType>::Mesh(std::vector<VertexType>& vert, std::vector<unsigned int>& ind, glm::vec3& col) :
+inline Mesh<VertexType>::Mesh(std::vector<VertexType>& vert, std::vector<unsigned int>& ind, GLenum primitive) :
 	vertices{ vert },
 	indices{ ind },
-	color{ col },
-	position{}, rotation{}, scale{ 1.0f }
+	position{}, rotation{}, scale{ 1.0f },
+	primitiveMode{ primitive }
 {
 	auto vertexTypeSize = sizeof(VertexType);
 
@@ -49,25 +49,33 @@ inline Mesh<VertexType>::Mesh(std::vector<VertexType>& vert, std::vector<unsigne
 	glBindVertexArray(vao);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size()* vertexTypeSize, &vertices[0], GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size()* vertexTypeSize, &vertices[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_DYNAMIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_STATIC_DRAW);
 
 	VertexType::SetVertexAttributes();
 }
 
 template<typename VertexType>
-inline void Mesh<VertexType>::UpdateBuffers()
+inline void Mesh<VertexType>::CreateBuffers()
 {
 	auto vertexTypeSize = sizeof(VertexType);
 	glBindVertexArray(vao);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * vertexTypeSize, &vertices[0], GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * vertexTypeSize, &vertices[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_DYNAMIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_STATIC_DRAW);
+}
+
+template<typename VertexType>
+inline void Mesh<VertexType>::ReplaceData(std::vector<VertexType>& vert, std::vector<unsigned int>& ind)
+{
+	vertices = vert;
+	indices = ind;
+	CreateBuffers();
 }
 
 template<typename VertexType>
@@ -75,35 +83,22 @@ inline void Mesh<VertexType>::Render()
 {
 	// TODO: actual model matrix and color
 	glm::mat4 M{ 1.0f };
+	M = glm::translate(M, position);
 	M = glm::scale(M, glm::vec3{ scale });
 
 	Renderer::SetMat4("M", M);
-	Renderer::SetVec3("color", color);
 
 	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-}
-
-template<typename VertexType>
-inline void Mesh<VertexType>::SetColor(glm::vec3& newCol)
-{
-	color = newCol;
-}
-
-template<typename VertexType>
-inline void Mesh<VertexType>::SetColor(float r, float g, float b)
-{
-	color = glm::vec3(r, g, b);
-}
-
-template<typename VertexType>
-inline void Mesh<VertexType>::SetColor(float newCol[3])
-{
-	color = glm::vec3(newCol[0], newCol[1], newCol[2]);
+	glDrawElements(primitiveMode, indices.size(), GL_UNSIGNED_INT, 0);
 }
 
 template<typename VertexType>
 inline void Mesh<VertexType>::SetScale(float newScale)
 {
 	scale = newScale;
+}
+template<typename VertexType>
+inline void Mesh<VertexType>::SetPosition(glm::vec3 newPos)
+{
+	position = newPos;
 }

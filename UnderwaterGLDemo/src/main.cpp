@@ -15,6 +15,7 @@
 #define cimg_use_tiff
 #include <CImg/CImg.h>
 
+#include "Rendering/Model.h"
 #include "Rendering/Plane.h"
 #include "Rendering/Shader.h"
 #include "Rendering/Renderer.h"
@@ -23,9 +24,9 @@
 
 const unsigned int WINDOW_WIDTH = 1600;
 const unsigned int WINDOW_HEIGHT = 900;
-const float MIN_SCENE_SIZE = 1.0f;
-const float MAX_SCENE_SIZE = 100.0f;
-const float SCENE_MOVE_BUFFER = 10.0f;
+const float MIN_SURFACE_SIZE = 1.0f;
+const float MAX_SURFACE_SIZE = 100.0f;
+const float SURFACE_MOVE_BUFFER = 10.0f;
 const float SCENE_HEIGHT = 30.0f;
 const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
@@ -86,7 +87,7 @@ int main()
 
 	try
 	{
-		Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT, glm::vec3{ MAX_SCENE_SIZE / 2 + SCENE_MOVE_BUFFER, SCENE_HEIGHT, MAX_SCENE_SIZE / 2 + SCENE_MOVE_BUFFER });
+		Renderer::Init(WINDOW_WIDTH, WINDOW_HEIGHT, glm::vec3{ MAX_SURFACE_SIZE / 2 + SURFACE_MOVE_BUFFER, SCENE_HEIGHT, MAX_SURFACE_SIZE / 2 + SURFACE_MOVE_BUFFER });
 	}
 	catch(std::exception const& e)
 	{
@@ -103,12 +104,19 @@ int main()
 
 	std::cout << "Initialization complete\n";
 
+	// scenes
+	float scenePosition[]{ 0.0f, 0.0f, 0.0f };
+	float sceneSize = 1.0f;
+	auto sceneCornellOriginal = CreateSceneFromObj("assets/scenes/cornell/CornellBox-Original.obj");
+
+	// water things
 	float waterColor[]{ 0.2f, 0.3f, 0.3f };
 	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
+	Material waterMat{ defWaterColor, glm::vec3{0.5f}, glm::vec3{0.5f}, 10.0f };
 	int gridVertexCount = 500;
-	float sceneSize = 20.0f;
-	Plane waterPlane = Plane::MakeXZPlane(1.0f, 1.0f, gridVertexCount, gridVertexCount, defWaterColor);
-	waterPlane.SetScale(sceneSize);
+	float surfaceSize = 20.0f;
+	Plane waterPlane = MakeXZPlane(waterMat, 1.0f, 1.0f, gridVertexCount, gridVertexCount);
+	waterPlane.SetScale(surfaceSize);
 
 	int waveCount = 20, newWaveCount = 20;
 	float minAngle = 0.0f, maxAngle = 360.0f;
@@ -125,7 +133,7 @@ int main()
 	float fourierSmallWave = 0.01f;
 	int fourierPower = 9;
 	unsigned int fourierGridSize = 1 << fourierPower;
-	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierGridSize, sceneSize);
+	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierGridSize, surfaceSize);
 	if (SAVE_FOURIER_DEBUG)
 	{
 		Debug_WriteImage(fourierGridSize);
@@ -172,9 +180,9 @@ int main()
 		ImGui::SliderFloat("Time multiplier", &timeMult, 0.01f, 10.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		simTime += timeMult * diffT;
 
-		if (ImGui::SliderFloat("Surface size", &sceneSize, MIN_SCENE_SIZE, MAX_SCENE_SIZE, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+		if (ImGui::SliderFloat("Surface size", &surfaceSize, MIN_SURFACE_SIZE, MAX_SURFACE_SIZE, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 		{
-			waterPlane.SetScale(sceneSize);
+			waterPlane.SetScale(surfaceSize);
 		}
 		ImGui::SliderInt("Grid count", &gridVertexCount, MIN_GRID_COUNT, MAX_GRID_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::Button("Regenerate surface"))
@@ -224,7 +232,7 @@ int main()
 					fourierNormalHeightTex = Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
 
 				}
-				GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierGridSize, sceneSize);
+				GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierGridSize, surfaceSize);
 				glBindTexture(GL_TEXTURE_2D, initFreqWaveTex);
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGB, GL_FLOAT, freqWaveData);
 			}
@@ -377,6 +385,17 @@ int main()
 			Renderer::SetFloat("t", simTime);
 		}
 		waterPlane.Render();
+
+		ImGui::SliderFloat("Scene size", &sceneSize, 0.1f, 20.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SliderFloat3("Scene position", scenePosition, -20.0f, 20.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+
+		Renderer::UseShader(ShaderMode::Phong);
+		for(int i = 0; i < sceneCornellOriginal.size(); i++)
+		{
+			sceneCornellOriginal[i]->SetPosition(scenePosition);
+			sceneCornellOriginal[i]->SetScale(sceneSize); // TODO: once scene is a separate class, move this into the if with the appropriate slider
+			sceneCornellOriginal[i]->Render();
+		}
 
 		ImGui::End();
 		ImGui::Render();
