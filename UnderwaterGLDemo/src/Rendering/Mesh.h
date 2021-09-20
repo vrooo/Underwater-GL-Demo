@@ -25,10 +25,12 @@ protected:
 	GLenum primitiveMode;
 
 	void CreateBuffers();
+	void PrepareRender();
 public:
 	Mesh(std::vector<VertexType>& vert, std::vector<unsigned int>& ind, GLenum primitive = GL_TRIANGLES);
 	void ReplaceData(std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
 	void Render();
+	void RenderInstanced(int instanceCount);
 	void SetScale(float newScale);
 	void SetPosition(glm::vec3 newPos);
 };
@@ -79,7 +81,7 @@ inline void Mesh<VertexType>::ReplaceData(std::vector<VertexType>& vert, std::ve
 }
 
 template<typename VertexType>
-inline void Mesh<VertexType>::Render()
+inline void Mesh<VertexType>::PrepareRender()
 {
 	// TODO: actual model matrix and color
 	glm::mat4 M{ 1.0f };
@@ -89,7 +91,20 @@ inline void Mesh<VertexType>::Render()
 	Renderer::SetMat4("M", M);
 
 	glBindVertexArray(vao);
+}
+
+template<typename VertexType>
+inline void Mesh<VertexType>::Render()
+{
+	PrepareRender();
 	glDrawElements(primitiveMode, indices.size(), GL_UNSIGNED_INT, 0);
+}
+
+template<typename VertexType>
+inline void Mesh<VertexType>::RenderInstanced(int instanceCount)
+{
+	PrepareRender();
+	glDrawElementsInstanced(primitiveMode, indices.size(), GL_UNSIGNED_INT, 0, instanceCount);
 }
 
 template<typename VertexType>

@@ -114,6 +114,7 @@ int main()
 	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
 	Material waterMat{ defWaterColor, glm::vec3{0.5f}, glm::vec3{0.5f}, 10.0f };
 	int gridVertexCount = 500;
+	int patchCountLevel = 2, patchCount = 2 * patchCountLevel - 1;
 	float surfaceSize = 20.0f;
 	Plane waterPlane = MakeXZPlane(waterMat, 1.0f, 1.0f, gridVertexCount, gridVertexCount);
 	waterPlane.SetScale(surfaceSize);
@@ -183,6 +184,11 @@ int main()
 		if (ImGui::SliderFloat("Surface size", &surfaceSize, MIN_SURFACE_SIZE, MAX_SURFACE_SIZE, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 		{
 			waterPlane.SetScale(surfaceSize);
+		}
+		std::string patchCountString = std::to_string(patchCount);
+		if (ImGui::SliderInt("Patch count", &patchCountLevel, 1, 5, patchCountString.c_str(), ImGuiSliderFlags_AlwaysClamp))
+		{
+			patchCount = 2 * patchCountLevel - 1;
 		}
 		ImGui::SliderInt("Grid count", &gridVertexCount, MIN_GRID_COUNT, MAX_GRID_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::Button("Regenerate surface"))
@@ -384,7 +390,8 @@ int main()
 			Renderer::SetFloat("waveCount", waveCount);
 			Renderer::SetFloat("t", simTime);
 		}
-		waterPlane.Render();
+		Renderer::SetInt("patchCount", patchCount);
+		waterPlane.RenderInstanced(patchCount * patchCount);
 
 		ImGui::SliderFloat("Scene size", &sceneSize, 0.1f, 20.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 		ImGui::SliderFloat3("Scene position", scenePosition, -20.0f, 20.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);

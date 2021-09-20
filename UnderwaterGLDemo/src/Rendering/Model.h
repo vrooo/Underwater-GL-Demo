@@ -7,6 +7,7 @@ class BaseModel
 {
 public:
 	virtual void Render() = 0;
+	virtual void RenderInstanced(int instanceCount) = 0;
 
 	virtual void SetPosition(float newPos[3]) = 0;
 	virtual void SetPosition(glm::vec3& newPos) = 0;
@@ -25,6 +26,7 @@ protected:
 public:
 	Model(Material mat, std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
 	void Render() override;
+	void RenderInstanced(int instanceCount) override;
 
 	void SetColor(float newCol[3]);
 	void SetColor(glm::vec3& newCol);
@@ -49,6 +51,13 @@ inline void Model<VertexType>::Render()
 {
 	material.Set();
 	mesh.Render();
+}
+
+template<typename VertexType>
+inline void Model<VertexType>::RenderInstanced(int instanceCount)
+{
+	material.Set();
+	mesh.RenderInstanced(instanceCount);
 }
 
 template<typename VertexType>

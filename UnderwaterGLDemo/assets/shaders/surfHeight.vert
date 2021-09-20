@@ -7,6 +7,7 @@ uniform mat4 V, invV;
 uniform mat4 P;
 
 uniform sampler2D normalHeightTex;
+uniform int patchCount; // in one dimension
 
 out vec3 world;
 out vec3 view;
@@ -14,11 +15,14 @@ out vec3 normal;
 
 void main()
 {
-    //normal = vec3(0.0f, 1.0f, 0.0f); // TODO
-
     vec4 normalHeight = texture(normalHeightTex, texCoord);
     normal = normalHeight.rgb;
-    vec4 worldPos = M * vec4(position, 1.0f);
+
+    int patchCountHalfFloor = (patchCount - 1) / 2;
+    vec2 patchShift = (vec2(gl_InstanceID % patchCount, gl_InstanceID / patchCount) - patchCountHalfFloor);
+    vec4 shiftedPos = vec4(position.x + patchShift.x, position.y, position.z + patchShift.y, 1.0f);
+
+    vec4 worldPos = M * shiftedPos;
     worldPos.y = normalHeight.a;
     world = worldPos.xyz;
     vec3 camPos = (invV * vec4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
