@@ -11,14 +11,15 @@ enum class ShaderMode
 {
 	PassThrough,
 	Phong,
-	SurfaceGerstner,
-	SurfaceHeightMap,
+	SurfaceDisplacement,
+	SurfaceHeight,
 	ComputeFreqWave,
 	ComputeIFFTX,
 	ComputeIFFTY,
 	ComputeIFFTYLastPass,
-	ComputeNormal,
-	ComputeNormalSobel
+	ComputeNormalFourier,
+	ComputeNormalSobel,
+	ComputeGerstner
 };
 
 class Renderer
@@ -39,7 +40,8 @@ public:
 	static void TranslateCamera(float forward, float right, float up);
 	static void RotateCamera(float pitch, float yaw);
 
-	static unsigned int CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels);
+	static unsigned int CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels,
+										GLint filterType = GL_NEAREST, GLint texWrapType = GL_CLAMP_TO_EDGE);
 
 private:
 	static void AddShaderIncludeDir(const char* dir);

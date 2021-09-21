@@ -35,16 +35,17 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 	glNamedStringARB = reinterpret_cast<NamedStringARBPtr>(glfwGetProcAddress("glNamedStringARB"));
 	AddShaderIncludeDir("assets/shaders/include");
 
-	shaders.push_back(Shader::CreateShaderVF("assets/shaders/pass.vert", "assets/shaders/pass.frag"));			// ShaderMode::PassThrough
-	shaders.push_back(Shader::CreateShaderVF("assets/shaders/phong.vert", "assets/shaders/phong.frag"));		// ShaderMode::Phong
-	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surface.vert", "assets/shaders/phong.frag"));		// ShaderMode::SurfaceGerstner
-	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfHeight.vert", "assets/shaders/phong.frag"));	// ShaderMode::SurfaceHeightMap
-	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/currentFreqWave.comp"));						// ShaderMode::ComputeFreqWave
-	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_x.comp"));								// ShaderMode::ComputeIFFTX
-	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y.comp"));								// ShaderMode::ComputeIFFTY
-	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y_last.comp"));							// ShaderMode::ComputeIFFTYLastPass
-	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normal.comp"));								// ShaderMode::ComputeNormal
-	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normalSobel.comp"));							// ShaderMode::ComputeNormalSobel
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/pass.vert", "assets/shaders/pass.frag"));				// ShaderMode::PassThrough
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/phong.vert", "assets/shaders/phong.frag"));			// ShaderMode::Phong
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfaceDisplace.vert", "assets/shaders/phong.frag"));	// ShaderMode::SurfaceDisplacement
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfaceHeight.vert", "assets/shaders/phong.frag"));	// ShaderMode::SurfaceHeight
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/currentFreqWave.comp"));							// ShaderMode::ComputeFreqWave
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_x.comp"));									// ShaderMode::ComputeIFFTX
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y.comp"));									// ShaderMode::ComputeIFFTY
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y_last.comp"));								// ShaderMode::ComputeIFFTYLastPass
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normalFourier.comp"));							// ShaderMode::ComputeNormalFourier
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normalSobel.comp"));								// ShaderMode::ComputeNormalSobel
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/gerstner.comp"));									// ShaderMode::ComputeGerstner
 	UseShader(ShaderMode::PassThrough);
 }
 
@@ -119,14 +120,17 @@ void Renderer::SetMat4(const char* name, glm::mat4& mat)
 	current->SetMat4(name, mat);
 }
 
-unsigned int Renderer::CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels)
+unsigned int Renderer::CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels,
+									   GLint filterType, GLint texWrapType)
 {
 	unsigned int texture;
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, pixels);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterType);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterType);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texWrapType);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texWrapType);
 	return texture;
 }
 
