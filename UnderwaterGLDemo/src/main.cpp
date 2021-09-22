@@ -114,7 +114,7 @@ int main()
 	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
 	Material waterMat{ defWaterColor, glm::vec3{0.5f}, glm::vec3{0.5f}, 10.0f };
 	int gridVertexCount = 500;
-	int patchCountLevel = 2, patchCount = 2 * patchCountLevel - 1;
+	int patchCountLevel = 1, patchCount = 2 * patchCountLevel - 1;
 	float surfaceSize = 20.0f;
 	Plane waterPlane = MakeXZPlane(waterMat, 1.0f, 1.0f, gridVertexCount, gridVertexCount);
 	waterPlane.SetScale(surfaceSize);
