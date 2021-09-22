@@ -4,15 +4,21 @@ layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 layout (rg32f) uniform readonly image2D heightTex;
 layout (rgba32f) uniform readonly image2D slopeTex;
-layout (rgba32f) uniform writeonly image2D normalHeightTex;
+layout (rgba32f) uniform readonly image2D choppyTex;
+layout (rgba32f) uniform writeonly image2D displacementTex;
+layout (rgba32f) uniform writeonly image2D normalTex;
 uniform uint fourierGridSize;
 
 void main()
 {
 	ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
-    float height = imageLoad(heightTex, pixelCoord).r;
     vec2 slope = imageLoad(slopeTex, pixelCoord).rg;
+    
+    float height = imageLoad(heightTex, pixelCoord).r;
+    vec4 normal = vec4(normalize(vec3(-slope.y, 0.1f, -slope.x)), height);
+    imageStore(normalTex, pixelCoord, normal);
 
-    vec4 normalHeight = vec4(normalize(vec3(-slope.x, 0.1f, -slope.y)), height);
-    imageStore(normalHeightTex, pixelCoord, normalHeight);
+    vec2 choppy = imageLoad(choppyTex, pixelCoord).rg;
+    vec4 displacement = vec4(choppy.x, height, choppy.y, 1.0f);
+    imageStore(displacementTex, pixelCoord, displacement);
 }

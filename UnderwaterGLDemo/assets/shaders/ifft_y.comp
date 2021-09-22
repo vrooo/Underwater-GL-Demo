@@ -10,37 +10,15 @@ void main()
 	uvec2 actualCoordY = texelFetch(coordLookupTex, ivec2(invocationCoord.y, level), 0).xy;
 	ivec2 pixelCoord1 = ivec2(invocationCoord.x, actualCoordY.x);
 	ivec2 pixelCoord2 = ivec2(invocationCoord.x, actualCoordY.y);
-	vec2 pixel1 = imageLoad(readTex, pixelCoord1).rg;
-	vec2 pixel2 = imageLoad(readTex, pixelCoord2).rg;
 
 	if (level == 0)
 	{
 		ivec2 writeCoord1 = invocationCoord;
 		ivec2 writeCoord2 = ivec2(writeCoord1.x, writeCoord1.y + fourierGridSize / 2);
-		vec2 k1 = getK(pixelCoord1), k2 = getK(pixelCoord2);
-		// write from pixelCoordK to writeCoordK (conjugated)
-		imageStore(writeTex, writeCoord1, vec4(pixel1.r, -pixel1.g, 0.0f, 1.0f));
-		imageStore(writeTex, writeCoord2, vec4(pixel2.r, -pixel2.g, 0.0f, 1.0f));
-		imageStore(writeSlopeTex, writeCoord1, vec4(k1.x * pixel1.g, -k1.x * pixel1.r, k1.y * pixel1.g, -k1.y * pixel1.r));
-		imageStore(writeSlopeTex, writeCoord2, vec4(k2.x * pixel2.g, -k2.x * pixel2.r, k2.y * pixel2.g, -k2.y * pixel2.r));
+		doFirstPass(pixelCoord1, pixelCoord2, writeCoord1, writeCoord2);
 	}
 	else
 	{
-		vec4 pixelSlope1 = imageLoad(readSlopeTex, pixelCoord1);
-		vec4 pixelSlope2 = imageLoad(readSlopeTex, pixelCoord2);
-
-		vec4 res = pass(pixel1, pixel2, invocationCoord.y);
-		vec2 res1 = res.xy, res2 = res.zw;
-
-		vec4 resSlopeX = pass(pixelSlope1.xy, pixelSlope2.xy, invocationCoord.y);
-		vec2 resSlopeX1 = resSlopeX.xy, resSlopeX2 = resSlopeX.zw;
-		vec4 resSlopeY = pass(pixelSlope1.zw, pixelSlope2.zw, invocationCoord.y);
-		vec2 resSlopeY1 = resSlopeY.xy, resSlopeY2 = resSlopeY.zw;
-
-		// we're not doing N == fourierGridSize with this shader
-		imageStore(writeTex, pixelCoord1, vec4(res1, 0.0f, 1.0f));
-		imageStore(writeTex, pixelCoord2, vec4(res2, 0.0f, 1.0f));
-		imageStore(writeSlopeTex, pixelCoord1, vec4(resSlopeX1, resSlopeY1));
-		imageStore(writeSlopeTex, pixelCoord2, vec4(resSlopeX2, resSlopeY2));
+		doPass(pixelCoord1, pixelCoord2, invocationCoord.y);
 	}
 }

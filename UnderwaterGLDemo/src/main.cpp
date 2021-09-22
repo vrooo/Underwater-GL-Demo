@@ -121,9 +121,9 @@ int main()
 
 	int waveCount = 20, newWaveCount = 20;
 	int gerstnerTexResolution = 500, newGerstnerTexResolution = 500;
-	float minAngle = 0.0f, maxAngle = 360.0f;
-	float minAmp = 0.001f, maxAmp = 0.02f;
-	float minK = 1.0f, maxK = 5.0f; // TODO: maybe wavelength instead?
+	float minAngle = 110.0f, maxAngle = 120.0f;
+	float minAmp = 0.001f, maxAmp = 0.004f;
+	float minK = 1.0f, maxK = 30.0f; // TODO: maybe wavelength instead?
 	float d = 10.0f, l = 0.0f;
 	GenerateGerstnerWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, gerstnerWaveData);
 
@@ -157,17 +157,24 @@ int main()
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RG32F, GL_RG, GL_FLOAT, nullptr);
 	unsigned int fourierBufferTex2 =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RG32F, GL_RG, GL_FLOAT, nullptr);
+	unsigned int fourierChoppyBufferTex1 =
+		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
+	unsigned int fourierChoppyBufferTex2 =
+		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
 	unsigned int fourierSlopeBufferTex1 =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
 	unsigned int fourierSlopeBufferTex2 =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
-	// this one needs to be regenerated each time using the correct size
-	unsigned int fourierNormalHeightTex =
+	// these two need to be regenerated each time using the correct size
+	unsigned int fourierDisplacementTex =
+		Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
+	unsigned int fourierNormalTex =
 		Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
 
 
 	float timeMult = 1.0f;
 	float lastTime = glfwGetTime(), simTime = 0;
+	bool useDisplacement = false;
 	bool gerstnerTexResolutionChanged = false;
 	bool useFourierWaves = false, useFourierSobelNormals = true, fourierGridSizeChanged = false;
 	while (!glfwWindowShouldClose(window))
@@ -206,6 +213,7 @@ int main()
 		{
 			waterPlane.SetColor(waterColor);
 		}
+		ImGui::Checkbox("Displacement", &useDisplacement);
 
 		if (ImGui::Button(useFourierWaves ? "Gerstner waves" : "Fourier waves"))
 		{
@@ -242,7 +250,9 @@ int main()
 					glBindTexture(GL_TEXTURE_2D, fourierCoordLookupTex);
 					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_FOURIER_GRID_SIZE / 2, MAX_FOURIER_POWER + 1, GL_RG_INTEGER, GL_UNSIGNED_INT, fourierCoordLookup);
 
-					fourierNormalHeightTex = 
+					fourierDisplacementTex = 
+						Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
+					fourierNormalTex = 
 						Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
 
 				}
@@ -287,23 +297,29 @@ int main()
 					else
 					{
 						glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-						glBindImageTexture(2, fourierSlopeBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
+						glBindImageTexture(2, fourierChoppyBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
+						glBindImageTexture(4, fourierSlopeBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
 					}
 					glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-					glBindImageTexture(3, fourierSlopeBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+					glBindImageTexture(3, fourierChoppyBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+					glBindImageTexture(5, fourierSlopeBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
 				}
 				else
 				{
 					glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
 					glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-					glBindImageTexture(2, fourierSlopeBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
-					glBindImageTexture(3, fourierSlopeBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+					glBindImageTexture(2, fourierChoppyBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
+					glBindImageTexture(3, fourierChoppyBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+					glBindImageTexture(4, fourierSlopeBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
+					glBindImageTexture(5, fourierSlopeBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
 				}
 				readFromFirst = !readFromFirst;
 				Renderer::SetInt("readTex", 0);
 				Renderer::SetInt("writeTex", 1);
-				Renderer::SetInt("readSlopeTex", 2);
-				Renderer::SetInt("writeSlopeTex", 3);
+				Renderer::SetInt("readChoppyTex", 2);
+				Renderer::SetInt("writeChoppyTex", 3);
+				Renderer::SetInt("readSlopeTex", 4);
+				Renderer::SetInt("writeSlopeTex", 5);
 				Renderer::SetUint("N", N);
 				Renderer::SetUint("level", level);
 				glDispatchCompute(fourierGroupSize / 2, fourierGroupSize, 1);
@@ -328,21 +344,27 @@ int main()
 				{
 					glBindImageTexture(0, fourierBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RG32F);
 					glBindImageTexture(1, fourierBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-					glBindImageTexture(2, fourierSlopeBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
-					glBindImageTexture(3, fourierSlopeBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+					glBindImageTexture(2, fourierChoppyBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
+					glBindImageTexture(3, fourierChoppyBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+					glBindImageTexture(4, fourierSlopeBufferTex1, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
+					glBindImageTexture(5, fourierSlopeBufferTex2, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
 				}
 				else
 				{
 					glBindImageTexture(0, fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
 					glBindImageTexture(1, fourierBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RG32F);
-					glBindImageTexture(2, fourierSlopeBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
-					glBindImageTexture(3, fourierSlopeBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+					glBindImageTexture(2, fourierChoppyBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
+					glBindImageTexture(3, fourierChoppyBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+					glBindImageTexture(4, fourierSlopeBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
+					glBindImageTexture(5, fourierSlopeBufferTex1, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
 				}
 				readFromFirst = !readFromFirst;
 				Renderer::SetInt("readTex", 0);
 				Renderer::SetInt("writeTex", 1);
-				Renderer::SetInt("readSlopeTex", 2);
-				Renderer::SetInt("writeSlopeTex", 3);
+				Renderer::SetInt("readChoppyTex", 2);
+				Renderer::SetInt("writeChoppyTex", 3);
+				Renderer::SetInt("readSlopeTex", 4);
+				Renderer::SetInt("writeSlopeTex", 5);
 				Renderer::SetUint("N", N);
 				Renderer::SetUint("level", level);
 				glDispatchCompute(fourierGroupSize, fourierGroupSize / 2, 1);
@@ -358,16 +380,23 @@ int main()
 				Renderer::SetInt("slopeTex", 1);
 			}
 			glBindImageTexture(0, readFromFirst ? fourierBufferTex1 : fourierBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RG32F);
-			glBindImageTexture(2, fourierNormalHeightTex, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+			glBindImageTexture(2, readFromFirst ? fourierChoppyBufferTex1 : fourierChoppyBufferTex2, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
+			glBindImageTexture(3, fourierDisplacementTex, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
+			glBindImageTexture(4, fourierNormalTex, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
 			Renderer::SetInt("heightTex", 0);
-			Renderer::SetInt("normalHeightTex", 2);
+			Renderer::SetInt("choppyTex", 2);
+			Renderer::SetInt("displacementTex", 3);
+			Renderer::SetInt("normalTex", 4);
 			Renderer::SetUint("fourierGridSize", fourierGridSize);
 			glDispatchCompute(fourierGroupSize, fourierGroupSize, 1);
 
-			Renderer::UseShader(ShaderMode::SurfaceHeight);
+			Renderer::UseShader(useDisplacement ? ShaderMode::SurfaceDisplacement : ShaderMode::SurfaceHeight);
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, fourierNormalHeightTex);
-			Renderer::SetInt("normalHeightTex", 0);
+			glBindTexture(GL_TEXTURE_2D, fourierDisplacementTex);
+			Renderer::SetInt("displacementTex", 0);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, fourierNormalTex);
+			Renderer::SetInt("normalTex", 1);
 		}
 		else
 		{
@@ -422,7 +451,7 @@ int main()
 			int gerstnerGroupSize = ceil((float)gerstnerTexResolution / COMPUTE_CHUNK);
 			glDispatchCompute(gerstnerGroupSize, gerstnerGroupSize, 1);
 
-			Renderer::UseShader(ShaderMode::SurfaceDisplacement);
+			Renderer::UseShader(useDisplacement ? ShaderMode::SurfaceDisplacement : ShaderMode::SurfaceHeight);
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, gerstnerDisplacementTex);
 			Renderer::SetInt("displacementTex", 0);
