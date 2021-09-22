@@ -1,4 +1,5 @@
-const float two_pi = 6.28318531;
+const float two_pi = 6.28318531f;
+const float k_coord_mult = two_pi / 100.0f;
 
 layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
@@ -10,6 +11,12 @@ layout (rgba32f) uniform writeonly image2D writeSlopeTex;
 uniform uint fourierGridSize;
 uniform uint level;
 uniform uint N;
+
+vec2 getK(ivec2 pixelCoord)
+{
+	//return pixelCoord / float(fourierGridSize) - 0.5f;
+	return (pixelCoord - fourierGridSize / 2) * k_coord_mult;
+}
 
 vec2 conjAndScale(vec2 v)
 {

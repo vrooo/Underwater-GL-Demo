@@ -17,7 +17,7 @@ void main()
 	{
 		ivec2 writeCoord1 = invocationCoord;
 		ivec2 writeCoord2 = ivec2(writeCoord1.x, writeCoord1.y + fourierGridSize / 2);
-		vec2 k1 = pixelCoord1 / float(fourierGridSize) - 0.5f, k2 = pixelCoord2 / float(fourierGridSize) - 0.5f;
+		vec2 k1 = getK(pixelCoord1), k2 = getK(pixelCoord2);
 		// write from pixelCoordK to writeCoordK (conjugated)
 		imageStore(writeTex, writeCoord1, vec4(pixel1.r, -pixel1.g, 0.0f, 1.0f));
 		imageStore(writeTex, writeCoord2, vec4(pixel2.r, -pixel2.g, 0.0f, 1.0f));
