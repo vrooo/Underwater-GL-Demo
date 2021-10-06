@@ -4,46 +4,14 @@
 
 #include "Scene.h"
 
-Scene::Scene(std::vector<std::unique_ptr<Model<PositionNormalTexVertex>>> models)
-	: models(std::move(models))
-{
-	for (int i = 0; i < models.size(); i++)
-	{
-
-	}
-
-	glGenBuffers(1, &ssboVertices);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboVertices);
-	//glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(shader_data), &shader_data, GL_DYNAMIC_COPY);
-}
-
-void Scene::SetPosition(float newPos[3])
-{
-	for (int i = 0; i < models.size(); i++)
-		models[i]->SetPosition(newPos);
-}
-
-void Scene::SetScale(float newScale)
-{
-	for (int i = 0; i < models.size(); i++)
-		models[i]->SetScale(newScale);
-}
-
-void Scene::Render()
-{
-	for (int i = 0; i < models.size(); i++)
-		models[i]->Render();
-}
-
-
-Scene CreateSceneFromObj(const char* objPath)
+Scene::Scene(const char* objPath)
+	: position{}, rotation{}, scale{ 1.0f }
 {
 	std::filesystem::path fsPath{ objPath };
 	fsPath.replace_extension(".mtl");
 	auto mtlPath = fsPath.c_str();
 
 	std::map<std::string, Material> materialMap;
-	std::vector<std::unique_ptr<Model<PositionNormalTexVertex>>> models;
 
 	std::ifstream mtlFile;
 	mtlFile.exceptions(std::ifstream::badbit);
@@ -98,6 +66,11 @@ Scene CreateSceneFromObj(const char* objPath)
 	std::vector<unsigned int> curIndices;
 	int curIndex = 0, readIndex = 0;
 
+	std::vector<PositionNormalTexVertex> allVertices;
+	std::vector<unsigned int> allIndices;
+	std::vector<ModelInfo> allModelInfo;
+	unsigned int allIndicesCurShift = 0, curModelIndexOffset = 0;
+
 	auto createModelIfExists = [&]()
 	{
 		if (!curIndices.empty())
@@ -105,11 +78,17 @@ Scene CreateSceneFromObj(const char* objPath)
 			std::vector<PositionNormalTexVertex> curVertices;
 			for (int i = 0; i < curPositions.size(); i++)
 			{
-				curVertices.push_back({ curPositions[i], curNormals[i], curTexCoords[i] });
+				PositionNormalTexVertex newVertex{ curPositions[i], curNormals[i], curTexCoords[i] };
+				curVertices.push_back(newVertex);
+				allVertices.push_back(newVertex);
 			}
 			auto curModel = std::make_unique<Model<PositionNormalTexVertex>>(curMat, curVertices, curIndices);
 			models.push_back(std::move(curModel));
+			unsigned int curIndicesSize = (unsigned int)curIndices.size();
+			allModelInfo.push_back({ curModelIndexOffset, curIndicesSize });
 
+			curModelIndexOffset += curIndicesSize;
+			allIndicesCurShift += curVertices.size();
 			curPositions.clear();
 			curNormals.clear();
 			curTexCoords.clear();
@@ -165,11 +144,59 @@ Scene CreateSceneFromObj(const char* objPath)
 				lineStream.ignore(1);
 				lineStream >> readIndex;
 				curNormals.push_back(normals[readIndex - 1]);
-				curIndices.push_back(curIndex++);
+
+				unsigned int newIndex = curIndex++;
+				curIndices.push_back(newIndex);
+				allIndices.push_back(newIndex + allIndicesCurShift);
 			}
 		}
 	}
 	createModelIfExists();
 	objFile.close();
-	return { std::move(models) };
+
+	glGenBuffers(1, &ssboVertices);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboVertices);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, allVertices.size() * sizeof(PositionNormalTexVertex), &allVertices[0], GL_DYNAMIC_COPY);
+
+	glGenBuffers(1, &ssboIndices);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboIndices);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, allIndices.size() * sizeof(unsigned int), &allIndices[0], GL_DYNAMIC_COPY);
+
+	glGenBuffers(1, &ssboModelInfo);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboModelInfo);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, allModelInfo.size() * sizeof(ModelInfo), &allModelInfo[0], GL_DYNAMIC_COPY);
+}
+
+void Scene::SetPosition(float newPos[3])
+{
+	position = glm::vec3(newPos[0], newPos[1], newPos[2]);
+}
+
+void Scene::SetScale(float newScale)
+{
+	scale = newScale;
+}
+
+void Scene::Render()
+{
+	EnableSceneModelMatrix();
+	for (int i = 0; i < models.size(); i++)
+		models[i]->Render(true);
+}
+
+void Scene::EnableSceneModelMatrix()
+{
+	// TODO: rotation
+	glm::mat4 M{ 1.0f };
+	M = glm::translate(M, position);
+	M = glm::scale(M, glm::vec3{ scale });
+
+	Renderer::SetMat4("M", M);
+}
+
+void Scene::BindSSBOs(int bindingVertex, int bindingIndex, int bindingModelInfo)
+{
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingVertex, ssboVertices);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingIndex, ssboIndices);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingModelInfo, ssboModelInfo);
 }

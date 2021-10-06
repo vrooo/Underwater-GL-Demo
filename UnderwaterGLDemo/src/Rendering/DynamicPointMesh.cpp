@@ -20,20 +20,22 @@ DynamicPointMesh::DynamicPointMesh(unsigned int pointCount, float pointSize, glm
 	glEnableVertexAttribArray(0);
 }
 
-void DynamicPointMesh::Render()
+void DynamicPointMesh::Render(bool showOnTop)
 {
-	glDisable(GL_DEPTH_TEST);
+	if (showOnTop)
+		glDisable(GL_DEPTH_TEST);
 	glPointSize(pointSize);
 	Renderer::SetVec4("color", color);
 
 	glBindVertexArray(vao);
 	glDrawArrays(GL_POINTS, 0, pointCount);
 
-	glEnable(GL_DEPTH_TEST);
+	if (showOnTop)
+		glEnable(GL_DEPTH_TEST);
 	glPointSize(1.0f);
 }
 
-void DynamicPointMesh::BindToSSBO(int binding)
+void DynamicPointMesh::BindAsSSBO(int binding)
 {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, vbo);
 }

@@ -4,18 +4,27 @@
 
 #include "Model.h"
 
+struct ModelInfo
+{
+	unsigned int indexOffset, indexCount;
+	// TODO: material data
+};
+
 class Scene
 {
 private:
-	GLuint ssboVertices, ssboIndices, ssboData;
+	GLuint ssboVertices, ssboIndices, ssboModelInfo;
 public:
 	std::vector<std::unique_ptr<Model<PositionNormalTexVertex>>> models;
+	glm::vec3 position;
+	glm::vec3 rotation;
+	float scale;
 
-	Scene(std::vector<std::unique_ptr<Model<PositionNormalTexVertex>>> models);
+	Scene(const char* objPath);
 
 	void SetPosition(float newPos[3]);
 	void SetScale(float newScale);
 	void Render();
+	void EnableSceneModelMatrix();
+	void BindSSBOs(int bindingVertex, int bindingIndex, int bindingModelInfo);
 };
-
-Scene CreateSceneFromObj(const char* objPath);

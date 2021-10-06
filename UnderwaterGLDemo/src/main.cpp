@@ -109,7 +109,7 @@ int main()
 	// scenes
 	float scenePosition[]{ 0.0f, 0.0f, 0.0f };
 	float sceneSize = 1.0f;
-	auto sceneCornellOriginal = CreateSceneFromObj("assets/scenes/cornell/CornellBox-Original.obj");
+	Scene sceneCornellOriginal{ "assets/scenes/cornell/CornellBox-Original.obj" };
 
 	// water things
 	float waterColor[]{ 0.2f, 0.3f, 0.3f };
@@ -173,7 +173,7 @@ int main()
 	unsigned int fourierNormalTex =
 		Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
 
-	DynamicPointMesh DEBUG_DPM{ sceneCornellOriginal.models[0]->GetVertexCount(), 5.0f, glm::vec4{1.0f, 0.0f, 0.0f, 1.0f} };
+	DynamicPointMesh DEBUG_DPM{ 10 * 5 * 1024, 5.0f, glm::vec4{1.0f, 0.0f, 0.0f, 1.0f} };
 
 	float timeMult = 1.0f;
 	float lastTime = glfwGetTime(), simTime = 0;
@@ -479,10 +479,10 @@ int main()
 
 		// TODO: test
 		Renderer::UseShader(ShaderMode::ComputePhotonMappingCastRays);
-		sceneCornellOriginal.models[0]->EnableModelMatrix();
-		sceneCornellOriginal.models[0]->BindToSSBO(0);
-		DEBUG_DPM.BindToSSBO(1);
-		glDispatchCompute(1, 1, 1);
+		sceneCornellOriginal.EnableSceneModelMatrix();
+		sceneCornellOriginal.BindSSBOs(0, 1, 2);
+		DEBUG_DPM.BindAsSSBO(3);
+		glDispatchCompute(10, 5, 1);
 		glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 
 		Renderer::UseShader(ShaderMode::Point);

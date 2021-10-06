@@ -25,13 +25,13 @@ protected:
 	GLenum primitiveMode;
 
 	void CreateBuffers();
-	void PrepareRender();
+	void PrepareRender(bool ignoreModelMatrix);
 public:
 	Mesh(std::vector<VertexType>& vert, std::vector<unsigned int>& ind, GLenum primitive = GL_TRIANGLES);
 	void ReplaceData(std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
-	void Render();
-	void RenderInstanced(int instanceCount);
-	void BindToSSBO(int binding);
+	void Render(bool ignoreModelMatrix = false);
+	void RenderInstanced(int instanceCount, bool ignoreModelMatrix = false);
+	void BindAsSSBO(int binding);
 	void EnableModelMatrix();
 
 	void SetScale(float newScale);
@@ -56,10 +56,10 @@ inline Mesh<VertexType>::Mesh(std::vector<VertexType>& vert, std::vector<unsigne
 	glBindVertexArray(vao);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size()* vertexTypeSize, &vertices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * vertexTypeSize, &vertices[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
 
 	VertexType::SetVertexAttributes();
 }
@@ -74,7 +74,7 @@ inline void Mesh<VertexType>::CreateBuffers()
 	glBufferData(GL_ARRAY_BUFFER, vertices.size() * vertexTypeSize, &vertices[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(float), &indices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
 }
 
 template<typename VertexType>
@@ -86,27 +86,28 @@ inline void Mesh<VertexType>::ReplaceData(std::vector<VertexType>& vert, std::ve
 }
 
 template<typename VertexType>
-inline void Mesh<VertexType>::PrepareRender()
+inline void Mesh<VertexType>::PrepareRender(bool ignoreModelMatrix)
 {
-	EnableModelMatrix();
+	if (!ignoreModelMatrix)
+		EnableModelMatrix();
 	glBindVertexArray(vao);
 }
 
 template<typename VertexType>
-inline void Mesh<VertexType>::Render()
+inline void Mesh<VertexType>::Render(bool ignoreModelMatrix)
 {
-	PrepareRender();
+	PrepareRender(ignoreModelMatrix);
 	glDrawElements(primitiveMode, indices.size(), GL_UNSIGNED_INT, 0);
 }
 template<typename VertexType>
-inline void Mesh<VertexType>::RenderInstanced(int instanceCount)
+inline void Mesh<VertexType>::RenderInstanced(int instanceCount, bool ignoreModelMatrix)
 {
-	PrepareRender();
+	PrepareRender(ignoreModelMatrix);
 	glDrawElementsInstanced(primitiveMode, indices.size(), GL_UNSIGNED_INT, 0, instanceCount);
 }
 
 template<typename VertexType>
-inline void Mesh<VertexType>::BindToSSBO(int binding)
+inline void Mesh<VertexType>::BindAsSSBO(int binding)
 {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, vbo);
 }

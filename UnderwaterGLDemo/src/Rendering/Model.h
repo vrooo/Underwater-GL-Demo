@@ -12,9 +12,9 @@ protected:
 
 public:
 	Model(Material mat, std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
-	void Render();
-	void RenderInstanced(int instanceCount);
-	void BindToSSBO(int binding);
+	void Render(bool ignoreModelMatrix = false);
+	void RenderInstanced(int instanceCount, bool ignoreModelMatrix = false);
+	void BindAsSSBO(int binding);
 	void EnableModelMatrix();
 
 	void SetColor(float newCol[3]);
@@ -37,23 +37,23 @@ inline Model<VertexType>::Model(Material mat, std::vector<VertexType>& vert, std
 {}
 
 template<typename VertexType>
-inline void Model<VertexType>::Render()
+inline void Model<VertexType>::Render(bool ignoreModelMatrix)
 {
 	material.Set();
-	mesh.Render();
+	mesh.Render(ignoreModelMatrix);
 }
 
 template<typename VertexType>
-inline void Model<VertexType>::RenderInstanced(int instanceCount)
+inline void Model<VertexType>::RenderInstanced(int instanceCount, bool ignoreModelMatrix)
 {
 	material.Set();
-	mesh.RenderInstanced(instanceCount);
+	mesh.RenderInstanced(instanceCount, ignoreModelMatrix);
 }
 
 template<typename VertexType>
-inline void Model<VertexType>::BindToSSBO(int binding)
+inline void Model<VertexType>::BindAsSSBO(int binding)
 {
-	mesh.BindToSSBO(binding);
+	mesh.BindAsSSBO(binding);
 }
 
 template<typename VertexType>
