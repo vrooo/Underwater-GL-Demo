@@ -31,8 +31,13 @@ public:
 	void ReplaceData(std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
 	void Render();
 	void RenderInstanced(int instanceCount);
+	void BindToSSBO(int binding);
+	void EnableModelMatrix();
+
 	void SetScale(float newScale);
 	void SetPosition(glm::vec3 newPos);
+
+	unsigned int GetVertexCount();
 };
 
 template<typename VertexType>
@@ -83,13 +88,7 @@ inline void Mesh<VertexType>::ReplaceData(std::vector<VertexType>& vert, std::ve
 template<typename VertexType>
 inline void Mesh<VertexType>::PrepareRender()
 {
-	// TODO: actual model matrix and color
-	glm::mat4 M{ 1.0f };
-	M = glm::translate(M, position);
-	M = glm::scale(M, glm::vec3{ scale });
-
-	Renderer::SetMat4("M", M);
-
+	EnableModelMatrix();
 	glBindVertexArray(vao);
 }
 
@@ -99,12 +98,28 @@ inline void Mesh<VertexType>::Render()
 	PrepareRender();
 	glDrawElements(primitiveMode, indices.size(), GL_UNSIGNED_INT, 0);
 }
-
 template<typename VertexType>
 inline void Mesh<VertexType>::RenderInstanced(int instanceCount)
 {
 	PrepareRender();
 	glDrawElementsInstanced(primitiveMode, indices.size(), GL_UNSIGNED_INT, 0, instanceCount);
+}
+
+template<typename VertexType>
+inline void Mesh<VertexType>::BindToSSBO(int binding)
+{
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, vbo);
+}
+
+template<typename VertexType>
+inline void Mesh<VertexType>::EnableModelMatrix()
+{
+	// TODO: rotation
+	glm::mat4 M{ 1.0f };
+	M = glm::translate(M, position);
+	M = glm::scale(M, glm::vec3{ scale });
+
+	Renderer::SetMat4("M", M);
 }
 
 template<typename VertexType>
@@ -116,4 +131,10 @@ template<typename VertexType>
 inline void Mesh<VertexType>::SetPosition(glm::vec3 newPos)
 {
 	position = newPos;
+}
+
+template<typename VertexType>
+inline unsigned int Mesh<VertexType>::GetVertexCount()
+{
+	return vertices.size();
 }

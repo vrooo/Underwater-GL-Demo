@@ -10,6 +10,7 @@
 enum class ShaderMode
 {
 	PassThrough,
+	Point,
 	Phong,
 	SurfaceDisplacement,
 	SurfaceHeight,
@@ -19,7 +20,8 @@ enum class ShaderMode
 	ComputeIFFTYLastPass,
 	ComputeNormalFourier,
 	ComputeNormalSobel,
-	ComputeGerstner
+	ComputeGerstner,
+	ComputePhotonMappingCastRays
 };
 
 class Renderer

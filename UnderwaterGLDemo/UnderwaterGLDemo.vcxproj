@@ -163,10 +163,11 @@ copy "$(ProjectDir)include\libtiff\Release\tiffxx.dll" "$(TargetDir)\tiffxx.dll"
     <ClCompile Include="include\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\glad.c" />
+    <ClCompile Include="src\Rendering\DynamicPointMesh.cpp" />
     <ClCompile Include="src\Rendering\Material.cpp" />
-    <ClCompile Include="src\Rendering\Model.cpp" />
     <ClCompile Include="src\Rendering\Plane.cpp" />
     <ClCompile Include="src\rendering\Renderer.cpp" />
+    <ClCompile Include="src\Rendering\Scene.cpp" />
     <ClCompile Include="src\rendering\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -182,7 +183,9 @@ copy "$(ProjectDir)include\libtiff\Release\tiffxx.dll" "$(TargetDir)\tiffxx.dll"
     <ClInclude Include="src\Rendering\Mesh.h" />
     <ClInclude Include="src\Rendering\Model.h" />
     <ClInclude Include="src\Rendering\Plane.h" />
+    <ClInclude Include="src\Rendering\DynamicPointMesh.h" />
     <ClInclude Include="src\rendering\Renderer.h" />
+    <ClInclude Include="src\Rendering\Scene.h" />
     <ClInclude Include="src\rendering\Shader.h" />
     <ClInclude Include="src\Rendering\Vertices.h" />
   </ItemGroup>

@@ -3,21 +3,8 @@
 #include "Material.h"
 #include "Mesh.h"
 
-class BaseModel
-{
-public:
-	virtual void Render() = 0;
-	virtual void RenderInstanced(int instanceCount) = 0;
-
-	virtual void SetPosition(float newPos[3]) = 0;
-	virtual void SetPosition(glm::vec3& newPos) = 0;
-	virtual void SetPosition(float x, float y, float z) = 0;
-
-	virtual void SetScale(float newScale) = 0;
-};
-
 template <typename VertexType>
-class Model : public BaseModel
+class Model
 {
 protected:
 	Material material;
@@ -25,8 +12,10 @@ protected:
 
 public:
 	Model(Material mat, std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
-	void Render() override;
-	void RenderInstanced(int instanceCount) override;
+	void Render();
+	void RenderInstanced(int instanceCount);
+	void BindToSSBO(int binding);
+	void EnableModelMatrix();
 
 	void SetColor(float newCol[3]);
 	void SetColor(glm::vec3& newCol);
@@ -36,10 +25,11 @@ public:
 	void SetPosition(glm::vec3& newPos);
 	void SetPosition(float x, float y, float z);
 
-	void SetScale(float newScale) override;
+	void SetScale(float newScale);
+
+	unsigned int GetVertexCount();
 };
 
-std::vector<std::unique_ptr<BaseModel>> CreateSceneFromObj(const char* objPath);
 
 template<typename VertexType>
 inline Model<VertexType>::Model(Material mat, std::vector<VertexType>& vert, std::vector<unsigned int>& ind)
@@ -58,6 +48,18 @@ inline void Model<VertexType>::RenderInstanced(int instanceCount)
 {
 	material.Set();
 	mesh.RenderInstanced(instanceCount);
+}
+
+template<typename VertexType>
+inline void Model<VertexType>::BindToSSBO(int binding)
+{
+	mesh.BindToSSBO(binding);
+}
+
+template<typename VertexType>
+inline void Model<VertexType>::EnableModelMatrix()
+{
+	mesh.EnableModelMatrix();
 }
 
 template<typename VertexType>
@@ -96,4 +98,10 @@ template<typename VertexType>
 inline void Model<VertexType>::SetScale(float newScale)
 {
 	mesh.SetScale(newScale);
+}
+
+template<typename VertexType>
+inline unsigned int Model<VertexType>::GetVertexCount()
+{
+	return mesh.GetVertexCount();
 }

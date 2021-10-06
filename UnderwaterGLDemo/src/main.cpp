@@ -15,8 +15,10 @@
 #define cimg_use_tiff
 #include <CImg/CImg.h>
 
+#include "Rendering/DynamicPointMesh.h"
 #include "Rendering/Model.h"
 #include "Rendering/Plane.h"
+#include "Rendering/Scene.h"
 #include "Rendering/Shader.h"
 #include "Rendering/Renderer.h"
 
@@ -135,7 +137,7 @@ int main()
 	unsigned int gerstnerNormalTex =
 		Renderer::CreateTexture2D(gerstnerTexResolution, gerstnerTexResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
 
-	float fourierAmp = 200.0f;
+	float fourierAmp = 500.0f;
 	float fourierWindSpeed = 100.0f, fourierWindAngle = 135.0f;
 	float fourierSmallWave = 0.01f;
 	int fourierPower = 9;
@@ -171,6 +173,7 @@ int main()
 	unsigned int fourierNormalTex =
 		Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
 
+	DynamicPointMesh DEBUG_DPM{ sceneCornellOriginal.models[0]->GetVertexCount(), 5.0f, glm::vec4{1.0f, 0.0f, 0.0f, 1.0f} };
 
 	float timeMult = 1.0f;
 	float lastTime = glfwGetTime(), simTime = 0;
@@ -462,16 +465,29 @@ int main()
 		Renderer::SetInt("patchCount", patchCount);
 		waterPlane.RenderInstanced(patchCount * patchCount);
 
-		ImGui::SliderFloat("Scene size", &sceneSize, 0.1f, 20.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-		ImGui::SliderFloat3("Scene position", scenePosition, -20.0f, 20.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+		if (ImGui::SliderFloat("Scene size", &sceneSize, 0.1f, 20.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+		{
+			sceneCornellOriginal.SetScale(sceneSize);
+		}
+		if (ImGui::SliderFloat3("Scene position", scenePosition, -20.0f, 20.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+		{
+			sceneCornellOriginal.SetPosition(scenePosition);
+		}
 
 		Renderer::UseShader(ShaderMode::Phong);
-		for(int i = 0; i < sceneCornellOriginal.size(); i++)
-		{
-			sceneCornellOriginal[i]->SetPosition(scenePosition);
-			sceneCornellOriginal[i]->SetScale(sceneSize); // TODO: once scene is a separate class, move this into the if with the appropriate slider
-			sceneCornellOriginal[i]->Render();
-		}
+		sceneCornellOriginal.Render();
+
+		// TODO: test
+		Renderer::UseShader(ShaderMode::ComputePhotonMappingCastRays);
+		sceneCornellOriginal.models[0]->EnableModelMatrix();
+		sceneCornellOriginal.models[0]->BindToSSBO(0);
+		DEBUG_DPM.BindToSSBO(1);
+		glDispatchCompute(1, 1, 1);
+		glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+		Renderer::UseShader(ShaderMode::Point);
+		DEBUG_DPM.Render();
+		// TODO: end test
 
 		ImGui::End();
 		ImGui::Render();

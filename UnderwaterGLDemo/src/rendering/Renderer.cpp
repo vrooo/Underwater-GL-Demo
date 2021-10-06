@@ -36,6 +36,7 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 	AddShaderIncludeDir("assets/shaders/include");
 
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/pass.vert", "assets/shaders/pass.frag"));				// ShaderMode::PassThrough
+	shaders.push_back(Shader::CreateShaderVF("assets/shaders/point.vert", "assets/shaders/pass.frag"));				// ShaderMode::Point
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/phong.vert", "assets/shaders/phong.frag"));			// ShaderMode::Phong
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfaceDisplace.vert", "assets/shaders/phong.frag"));	// ShaderMode::SurfaceDisplacement
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfaceHeight.vert", "assets/shaders/phong.frag"));	// ShaderMode::SurfaceHeight
@@ -46,6 +47,7 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normalFourier.comp"));							// ShaderMode::ComputeNormalFourier
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normalSobel.comp"));								// ShaderMode::ComputeNormalSobel
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/gerstner.comp"));									// ShaderMode::ComputeGerstner
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/photonMappingCastRays.comp"));					// ShaderMode::ComputePhotonMappingCastRays
 	UseShader(ShaderMode::PassThrough);
 }
 

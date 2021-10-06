@@ -2,16 +2,48 @@
 #include <fstream>
 #include <map>
 
-#include "Model.h"
+#include "Scene.h"
 
-std::vector<std::unique_ptr<BaseModel>> CreateSceneFromObj(const char* objPath)
+Scene::Scene(std::vector<std::unique_ptr<Model<PositionNormalTexVertex>>> models)
+	: models(std::move(models))
+{
+	for (int i = 0; i < models.size(); i++)
+	{
+
+	}
+
+	glGenBuffers(1, &ssboVertices);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboVertices);
+	//glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(shader_data), &shader_data, GL_DYNAMIC_COPY);
+}
+
+void Scene::SetPosition(float newPos[3])
+{
+	for (int i = 0; i < models.size(); i++)
+		models[i]->SetPosition(newPos);
+}
+
+void Scene::SetScale(float newScale)
+{
+	for (int i = 0; i < models.size(); i++)
+		models[i]->SetScale(newScale);
+}
+
+void Scene::Render()
+{
+	for (int i = 0; i < models.size(); i++)
+		models[i]->Render();
+}
+
+
+Scene CreateSceneFromObj(const char* objPath)
 {
 	std::filesystem::path fsPath{ objPath };
 	fsPath.replace_extension(".mtl");
 	auto mtlPath = fsPath.c_str();
 
 	std::map<std::string, Material> materialMap;
-	std::vector<std::unique_ptr<BaseModel>> scene;
+	std::vector<std::unique_ptr<Model<PositionNormalTexVertex>>> models;
 
 	std::ifstream mtlFile;
 	mtlFile.exceptions(std::ifstream::badbit);
@@ -70,26 +102,13 @@ std::vector<std::unique_ptr<BaseModel>> CreateSceneFromObj(const char* objPath)
 	{
 		if (!curIndices.empty())
 		{
-			if (curTexCoords.empty())
+			std::vector<PositionNormalTexVertex> curVertices;
+			for (int i = 0; i < curPositions.size(); i++)
 			{
-				std::vector<PositionNormalVertex> curVertices;
-				for (int i = 0; i < curPositions.size(); i++)
-				{
-					curVertices.push_back({ curPositions[i], curNormals[i] });
-				}
-				auto curModel = std::make_unique<Model<PositionNormalVertex>>(curMat, curVertices, curIndices);
-				scene.push_back(std::move(curModel));
+				curVertices.push_back({ curPositions[i], curNormals[i], curTexCoords[i] });
 			}
-			else
-			{
-				std::vector<PositionNormalTexVertex> curVertices;
-				for (int i = 0; i < curPositions.size(); i++)
-				{
-					curVertices.push_back({ curPositions[i], curNormals[i], curTexCoords[i] });
-				}
-				auto curModel = std::make_unique<Model<PositionNormalTexVertex>>(curMat, curVertices, curIndices);
-				scene.push_back(std::move(curModel));
-			}
+			auto curModel = std::make_unique<Model<PositionNormalTexVertex>>(curMat, curVertices, curIndices);
+			models.push_back(std::move(curModel));
 
 			curPositions.clear();
 			curNormals.clear();
@@ -139,6 +158,10 @@ std::vector<std::unique_ptr<BaseModel>> CreateSceneFromObj(const char* objPath)
 					lineStream >> readIndex;
 					curTexCoords.push_back(texCoords[readIndex - 1]);
 				}
+				else
+				{
+					curTexCoords.push_back(glm::vec2{ 0 });
+				}
 				lineStream.ignore(1);
 				lineStream >> readIndex;
 				curNormals.push_back(normals[readIndex - 1]);
@@ -148,5 +171,5 @@ std::vector<std::unique_ptr<BaseModel>> CreateSceneFromObj(const char* objPath)
 	}
 	createModelIfExists();
 	objFile.close();
-	return scene;
+	return { std::move(models) };
 }
