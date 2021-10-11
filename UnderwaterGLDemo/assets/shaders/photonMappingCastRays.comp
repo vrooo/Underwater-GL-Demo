@@ -1,7 +1,7 @@
 #version 430 core
 const float pi = 3.14159265359f;
-const float eps = 0.0000001f;
-const float t_offset = 0.001f;
+const float t_offset = 0.0001f;
+const float eps = 1e-7f;
 
 layout (local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
@@ -17,8 +17,16 @@ struct InVertexData
 
 struct InModelInfo
 {
-	uint indexOffset;
-	uint indexCount;
+	uint indexOffset, indexCount;
+	float minX, maxX;
+	float minY, maxY;
+	float minZ, maxZ;
+};
+
+struct InSurfaceVertexData
+{
+	vec2 position;
+	vec2 texCoord;
 };
 
 layout (std430, binding = 0) buffer InVertexBuffer
@@ -34,7 +42,22 @@ layout (std430, binding = 2) buffer InModelBuffer
 	InModelInfo inModels[];
 };
 
-layout (std430, binding = 3) buffer OutBuffer
+uniform mat4 surfaceM;
+uniform sampler2D surfaceDisplacementTex;
+uniform sampler2D surfaceNormalTex;
+// TODO: displacement bool
+uniform int surfacePatchCount; // in one dimension
+
+layout (std430, binding = 3) buffer InSurfaceVertexBuffer
+{
+	InSurfaceVertexData inSurfaceVertices[];
+};
+layout (std430, binding = 4) buffer InSurfaceIndexBuffer
+{
+	unsigned int inSurfaceIndices[];
+};
+
+layout (std430, binding = 6) buffer OutBuffer
 {
 	vec4 positions[];
 };
@@ -66,6 +89,30 @@ bool intersectTriangle(vec3 rayOrigin, vec3 rayDir, vec3 v0, vec3 v1, vec3 v2, o
 	return false; // line intersection, but no ray intersection
 }
 
+bool intersectBox(vec3 rayOrigin, vec3 rayDir, vec3 rayDirInv, vec3 minCorner, vec3 maxCorner)
+{
+	// https://tavianator.com/2011/ray_box.html
+	float tx1 = (minCorner.x - rayOrigin.x) * rayDirInv.x;
+    float tx2 = (maxCorner.x - rayOrigin.x) * rayDirInv.x;
+
+    float tmin = min(tx1, tx2);
+    float tmax = max(tx1, tx2);
+
+    float ty1 = (minCorner.y - rayOrigin.y) * rayDirInv.y;
+    float ty2 = (maxCorner.y - rayOrigin.y) * rayDirInv.y;
+
+    tmin = max(tmin, min(ty1, ty2));
+    tmax = min(tmax, max(ty1, ty2));
+
+	float tz1 = (minCorner.z - rayOrigin.z) * rayDirInv.z;
+    float tz2 = (maxCorner.z - rayOrigin.z) * rayDirInv.z;
+
+	tmin = max(tmin, min(tz1, tz2));
+    tmax = min(tmax, max(tz1, tz2));
+
+    return tmax >= tmin;
+}
+
 void main()
 {
 	int idx = int(gl_GlobalInvocationID.x);
@@ -79,31 +126,55 @@ void main()
 	float angle2 = (idy / (gl_NumWorkGroups.y * 32 - 1.0f) - 0.5f) * pi;
 	float sinAngle2 = sin(angle2), cosAngle2 = -cos(angle2);
 	vec3 lightDir = vec3(sinAngle1 * cosAngle2, cosAngle1, sinAngle1 * sinAngle2);
+	vec3 lightDirInv = 1.0f / lightDir; // in current glsl 1/0 = inf
 
 	bool firstFound = false;
 	float t = 0.0f, bestT = 0.0f;
-//	for (uint i = 0; i < inModels.length(); i++)
+	// water
+	// TODO: patch count
+//	for (uint i = 0; i < inSurfaceIndices.length(); i += 3)
 //	{
-//		uint ind = 0;
-//
-//	}
-	for (uint i = 0; i < inIndices.length(); i += 3)
+//		InSurfaceVertexData vertexData0 = inSurfaceVertices[inSurfaceIndices[i]];
+//		InSurfaceVertexData vertexData1 = inSurfaceVertices[inSurfaceIndices[i + 1]];
+//		InSurfaceVertexData vertexData2 = inSurfaceVertices[inSurfaceIndices[i + 2]];
+//		vec3 v0 = (surfaceM * vec4(vertexData0.position.x, texture(surfaceDisplacementTex, vertexData0.texCoord).g, vertexData0.position.y, 1.0f)).xyz;
+//		vec3 v1 = (surfaceM * vec4(vertexData1.position.x, texture(surfaceDisplacementTex, vertexData1.texCoord).g, vertexData1.position.y, 1.0f)).xyz;
+//		vec3 v2 = (surfaceM * vec4(vertexData2.position.x, texture(surfaceDisplacementTex, vertexData2.texCoord).g, vertexData2.position.y, 1.0f)).xyz;
+//		if (intersectTriangle(lightPos, lightDir, v0, v1, v2, t))
+//		{
+//			if (!firstFound || t < bestT)
+//			{
+//				firstFound = true;
+//				bestT = t;
+//			}
+//		}
+//	};
+	// scene
+	for (uint i = 0; i < inModels.length(); i++)
 	{
-		vec3 v0 = (M * vec4(inVertices[inIndices[i]].position, 1.0f)).xyz;
-		vec3 v1 = (M * vec4(inVertices[inIndices[i + 1]].position, 1.0f)).xyz;
-		vec3 v2 = (M * vec4(inVertices[inIndices[i + 2]].position, 1.0f)).xyz;
-		if (intersectTriangle(lightPos, lightDir, v0, v1, v2, t))
+		InModelInfo curInfo = inModels[i];
+		vec3 minCorner = (M * vec4(curInfo.minX, curInfo.minY, curInfo.minZ, 1.0f)).xyz;
+		vec3 maxCorner = (M * vec4(curInfo.maxX, curInfo.maxY, curInfo.maxZ, 1.0f)).xyz;
+		if (intersectBox(lightPos, lightDir, lightDirInv, minCorner, maxCorner))
 		{
-			if (!firstFound || t < bestT)
+			for (uint j = 0; j < curInfo.indexCount; j += 3)
 			{
-				firstFound = true;
-				bestT = t;
+				uint index = curInfo.indexOffset + j;
+				vec3 v0 = (M * vec4(inVertices[inIndices[index]].position, 1.0f)).xyz;
+				vec3 v1 = (M * vec4(inVertices[inIndices[index + 1]].position, 1.0f)).xyz;
+				vec3 v2 = (M * vec4(inVertices[inIndices[index + 2]].position, 1.0f)).xyz;
+				if (intersectTriangle(lightPos, lightDir, v0, v1, v2, t))
+				{
+					if (!firstFound || t < bestT)
+					{
+						firstFound = true;
+						bestT = t;
+					}
+				}
 			}
 		}
 	}
 
-	//if (id < inVertices.length())
-	//	positions[id] = M * vec4(inVertices[id].position, 1.0f);
+	if (!firstFound) bestT = 0.5f;
 	positions[id] = vec4(lightPos + (bestT - t_offset) * lightDir, 1.0f);
-	//positions[id] = vec4(lightPos + lightDir, 1.0f);
 }

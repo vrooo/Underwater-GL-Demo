@@ -35,7 +35,7 @@ void DynamicPointMesh::Render(bool showOnTop)
 	glPointSize(1.0f);
 }
 
-void DynamicPointMesh::BindAsSSBO(int binding)
+void DynamicPointMesh::BindSSBO(int bindingVertex)
 {
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, vbo);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingVertex, vbo);
 }

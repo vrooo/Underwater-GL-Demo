@@ -1,5 +1,5 @@
 #version 430 core
-layout (location = 0) in vec3 position;
+layout (location = 0) in vec2 position;
 layout (location = 1) in vec2 texCoord;
 
 uniform mat4 M;
@@ -21,7 +21,7 @@ void main()
 
     int patchCountHalfFloor = (patchCount - 1) / 2;
     vec2 patchShift = (vec2(gl_InstanceID % patchCount, gl_InstanceID / patchCount) - patchCountHalfFloor);
-    vec4 shiftedPos = vec4(position.x + patchShift.x, height, position.z + patchShift.y, 1.0f);
+    vec4 shiftedPos = vec4(position.x + patchShift.x, height, position.y + patchShift.y, 1.0f);
 
     vec4 worldPos = M * shiftedPos;
     world = worldPos.xyz;

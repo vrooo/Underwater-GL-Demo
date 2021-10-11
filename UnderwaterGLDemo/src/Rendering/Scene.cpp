@@ -64,6 +64,9 @@ Scene::Scene(const char* objPath)
 	std::vector<glm::vec2> texCoords, curTexCoords;
 	std::vector<glm::vec3> positions, normals, curPositions, curNormals;
 	std::vector<unsigned int> curIndices;
+	float minX = FLT_MAX, maxX = -FLT_MAX;
+	float minY = FLT_MAX, maxY = -FLT_MAX;
+	float minZ = FLT_MAX, maxZ = -FLT_MAX;
 	int curIndex = 0, readIndex = 0;
 
 	std::vector<PositionNormalTexVertex> allVertices;
@@ -85,7 +88,7 @@ Scene::Scene(const char* objPath)
 			auto curModel = std::make_unique<Model<PositionNormalTexVertex>>(curMat, curVertices, curIndices);
 			models.push_back(std::move(curModel));
 			unsigned int curIndicesSize = (unsigned int)curIndices.size();
-			allModelInfo.push_back({ curModelIndexOffset, curIndicesSize });
+			allModelInfo.push_back({ curModelIndexOffset, curIndicesSize, minX, maxX, minY, maxY, minZ, maxZ });
 
 			curModelIndexOffset += curIndicesSize;
 			allIndicesCurShift += curVertices.size();
@@ -94,6 +97,8 @@ Scene::Scene(const char* objPath)
 			curTexCoords.clear();
 			curIndices.clear();
 			curIndex = 0;
+			minX = minY = minZ = FLT_MAX;
+			maxX = maxY = maxZ = -FLT_MAX;
 		}
 	};
 
@@ -130,7 +135,17 @@ Scene::Scene(const char* objPath)
 			for (int i = 0; i < 3; i++)
 			{
 				lineStream >> readIndex;
-				curPositions.push_back(positions[readIndex - 1]);
+				glm::vec3 pos = positions[readIndex - 1];
+				curPositions.push_back(pos);
+
+				minX = std::min(minX, pos.x);
+				minY = std::min(minY, pos.y);
+				minZ = std::min(minZ, pos.z);
+
+				maxX = std::max(maxX, pos.x);
+				maxY = std::max(maxY, pos.y);
+				maxZ = std::max(maxZ, pos.z);
+
 				lineStream.ignore(1);
 				if (lineStream.peek() != '/')
 				{

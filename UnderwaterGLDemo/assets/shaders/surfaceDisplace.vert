@@ -1,5 +1,5 @@
 #version 430 core
-layout (location = 0) in vec3 position;
+layout (location = 0) in vec2 position;
 layout (location = 1) in vec2 texCoord;
 
 uniform mat4 M;
@@ -16,7 +16,7 @@ out vec3 normal;
 
 void main()
 {
-    vec3 displacedPos = position + texture(displacementTex, texCoord).rgb;
+    vec3 displacedPos = vec3(position.x, 0.0f, position.y) + texture(displacementTex, texCoord).rgb;
     normal = texture(normalTex, texCoord).rgb;
 
     int patchCountHalfFloor = (patchCount - 1) / 2;

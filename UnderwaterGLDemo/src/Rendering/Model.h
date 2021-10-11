@@ -12,10 +12,10 @@ protected:
 
 public:
 	Model(Material mat, std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
-	void Render(bool ignoreModelMatrix = false);
-	void RenderInstanced(int instanceCount, bool ignoreModelMatrix = false);
-	void BindAsSSBO(int binding);
-	void EnableModelMatrix();
+	void Render(bool ignoreModelMatrix = false, const char* modelMatrixName = "M");
+	void RenderInstanced(int instanceCount, bool ignoreModelMatrix = false, const char* modelMatrixName = "M");
+	void BindSSBOs(int bindingVertex, int bindingIndex);
+	void EnableModelMatrix(const char* modelMatrixName = "M");
 
 	void SetColor(float newCol[3]);
 	void SetColor(glm::vec3& newCol);
@@ -37,29 +37,29 @@ inline Model<VertexType>::Model(Material mat, std::vector<VertexType>& vert, std
 {}
 
 template<typename VertexType>
-inline void Model<VertexType>::Render(bool ignoreModelMatrix)
+inline void Model<VertexType>::Render(bool ignoreModelMatrix, const char* modelMatrixName)
 {
 	material.Set();
-	mesh.Render(ignoreModelMatrix);
+	mesh.Render(ignoreModelMatrix, modelMatrixName);
 }
 
 template<typename VertexType>
-inline void Model<VertexType>::RenderInstanced(int instanceCount, bool ignoreModelMatrix)
+inline void Model<VertexType>::RenderInstanced(int instanceCount, bool ignoreModelMatrix, const char* modelMatrixName)
 {
 	material.Set();
-	mesh.RenderInstanced(instanceCount, ignoreModelMatrix);
+	mesh.RenderInstanced(instanceCount, ignoreModelMatrix, modelMatrixName);
 }
 
 template<typename VertexType>
-inline void Model<VertexType>::BindAsSSBO(int binding)
+inline void Model<VertexType>::BindSSBOs(int bindingVertex, int bindingIndex)
 {
-	mesh.BindAsSSBO(binding);
+	mesh.BindSSBOs(bindingVertex, bindingIndex);
 }
 
 template<typename VertexType>
-inline void Model<VertexType>::EnableModelMatrix()
+inline void Model<VertexType>::EnableModelMatrix(const char* modelMatrixName)
 {
-	mesh.EnableModelMatrix();
+	mesh.EnableModelMatrix(modelMatrixName);
 }
 
 template<typename VertexType>

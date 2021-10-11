@@ -173,7 +173,8 @@ int main()
 	unsigned int fourierNormalTex =
 		Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
 
-	DynamicPointMesh DEBUG_DPM{ 10 * 5 * 1024, 5.0f, glm::vec4{1.0f, 0.0f, 0.0f, 1.0f} };
+	const int DEBUG_PHOTON_SIZE_1 = 1, DEBUG_PHOTON_SIZE_2 = 1;
+	DynamicPointMesh DEBUG_DPM{ DEBUG_PHOTON_SIZE_1 * DEBUG_PHOTON_SIZE_2 * 1024, 5.0f, glm::vec4{1.0f, 0.0f, 0.0f, 1.0f} };
 
 	float timeMult = 1.0f;
 	float lastTime = glfwGetTime(), simTime = 0;
@@ -203,7 +204,7 @@ int main()
 			waterPlane.SetScale(surfaceSize);
 		}
 		std::string patchCountString = std::to_string(patchCount);
-		if (ImGui::SliderInt("Patch count", &patchCountLevel, 1, 5, patchCountString.c_str(), ImGuiSliderFlags_AlwaysClamp))
+		if (ImGui::SliderInt("Patch count", &patchCountLevel, 1, 5, patchCountString.c_str(), ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput))
 		{
 			patchCount = 2 * patchCountLevel - 1;
 		}
@@ -233,7 +234,7 @@ int main()
 				useFourierSobelNormals = !useFourierSobelNormals;
 			}
 			std::string fourierGridSizeString = std::to_string(1 << fourierPower);
-			if (ImGui::SliderInt("Fourier grid size", &fourierPower, MIN_FOURIER_POWER, MAX_FOURIER_POWER, fourierGridSizeString.c_str(), ImGuiSliderFlags_AlwaysClamp))
+			if (ImGui::SliderInt("Fourier grid size", &fourierPower, MIN_FOURIER_POWER, MAX_FOURIER_POWER, fourierGridSizeString.c_str(), ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput))
 			{
 				fourierGridSizeChanged = true;
 			}
@@ -481,8 +482,19 @@ int main()
 		Renderer::UseShader(ShaderMode::ComputePhotonMappingCastRays);
 		sceneCornellOriginal.EnableSceneModelMatrix();
 		sceneCornellOriginal.BindSSBOs(0, 1, 2);
-		DEBUG_DPM.BindAsSSBO(3);
-		glDispatchCompute(10, 5, 1);
+
+		waterPlane.EnableModelMatrix("surfaceM");
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, useFourierWaves ? fourierDisplacementTex : gerstnerDisplacementTex);
+		Renderer::SetInt("surfaceDisplacementTex", 0);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, useFourierWaves ? fourierNormalTex : gerstnerNormalTex);
+		Renderer::SetInt("surfaceNormalTex", 1);
+		Renderer::SetInt("surfacePatchCount", patchCount);
+		waterPlane.BindSSBOs(3, 4);
+
+		DEBUG_DPM.BindSSBO(6);
+		glDispatchCompute(DEBUG_PHOTON_SIZE_1, DEBUG_PHOTON_SIZE_2, 1);
 		glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 
 		Renderer::UseShader(ShaderMode::Point);
