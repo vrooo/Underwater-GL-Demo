@@ -4,6 +4,15 @@
 
 #include "Scene.h"
 
+struct ModelInfo
+{
+	unsigned int indexOffset, indexCount;
+	float minX, maxX;
+	float minY, maxY;
+	float minZ, maxZ;
+	// TODO: material data
+};
+
 Scene::Scene(const char* objPath)
 	: position{}, rotation{}, scale{ 1.0f }
 {

@@ -31,7 +31,8 @@ public:
 	void ReplaceData(std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
 	void Render(bool ignoreModelMatrix = false, const char* modelMatrixName = "M");
 	void RenderInstanced(int instanceCount, bool ignoreModelMatrix = false, const char* modelMatrixName = "M");
-	void BindSSBOs(int bindingVertex, int bindingIndex);
+	void BindVertexSSBO(int bindingVertex);
+	void BindIndexSSBO(int bindingIndex);
 	void EnableModelMatrix(const char* modelMatrixName);
 
 	void SetScale(float newScale);
@@ -107,9 +108,13 @@ inline void Mesh<VertexType>::RenderInstanced(int instanceCount, bool ignoreMode
 }
 
 template<typename VertexType>
-inline void Mesh<VertexType>::BindSSBOs(int bindingVertex, int bindingIndex)
+inline void Mesh<VertexType>::BindVertexSSBO(int bindingVertex)
 {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingVertex, vbo);
+}
+template<typename VertexType>
+inline void Mesh<VertexType>::BindIndexSSBO(int bindingIndex)
+{
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingIndex, ebo);
 }
 

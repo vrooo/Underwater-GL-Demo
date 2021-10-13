@@ -14,6 +14,8 @@ public:
 	Model(Material mat, std::vector<VertexType>& vert, std::vector<unsigned int>& ind);
 	void Render(bool ignoreModelMatrix = false, const char* modelMatrixName = "M");
 	void RenderInstanced(int instanceCount, bool ignoreModelMatrix = false, const char* modelMatrixName = "M");
+	void BindVertexSSBO(int bindingVertex);
+	void BindIndexSSBO(int bindingIndex);
 	void BindSSBOs(int bindingVertex, int bindingIndex);
 	void EnableModelMatrix(const char* modelMatrixName = "M");
 
@@ -51,9 +53,20 @@ inline void Model<VertexType>::RenderInstanced(int instanceCount, bool ignoreMod
 }
 
 template<typename VertexType>
+inline void Model<VertexType>::BindVertexSSBO(int bindingVertex)
+{
+	mesh.BindVertexSSBO(bindingVertex);
+}
+template<typename VertexType>
+inline void Model<VertexType>::BindIndexSSBO(int bindingIndex)
+{
+	mesh.BindIndexSSBO(bindingIndex);
+}
+template<typename VertexType>
 inline void Model<VertexType>::BindSSBOs(int bindingVertex, int bindingIndex)
 {
-	mesh.BindSSBOs(bindingVertex, bindingIndex);
+	mesh.BindVertexSSBO(bindingVertex);
+	mesh.BindIndexSSBO(bindingIndex);
 }
 
 template<typename VertexType>

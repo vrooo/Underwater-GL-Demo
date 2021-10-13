@@ -33,6 +33,7 @@ const float SCENE_HEIGHT = 30.0f;
 const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
+const unsigned int CHUNK_VERTEX_COUNT = 64;
 const unsigned int MAX_WAVE_COUNT = 100;
 const unsigned int MIN_GRID_COUNT = 10;
 const unsigned int MAX_GRID_COUNT = 2000;
@@ -115,14 +116,17 @@ int main()
 	float waterColor[]{ 0.2f, 0.3f, 0.3f };
 	glm::vec3 defWaterColor{ waterColor[0], waterColor[1], waterColor[2] };
 	Material waterMat{ defWaterColor, glm::vec3{0.5f}, glm::vec3{0.5f}, 10.0f };
-	int gridVertexCount = 500;
+	int gridVertexCount = 512; // TODO: power
 	int patchCountLevel = 1, patchCount = 2 * patchCountLevel - 1;
 	float surfaceSize = 20.0f;
-	Plane waterPlane = MakeXZPlane(waterMat, 1.0f, 1.0f, gridVertexCount, gridVertexCount);
+	Plane waterPlane = MakeXZPlane(waterMat, gridVertexCount, CHUNK_VERTEX_COUNT);
 	waterPlane.SetScale(surfaceSize);
 
+	unsigned int surfaceBoundingBoxesTex =
+		Renderer::CreateTexture2D(511, 2, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr); // TODO: replace 511 with max water size or sth
+
 	int waveCount = 20, newWaveCount = 20;
-	int gerstnerTexResolution = 500, newGerstnerTexResolution = 500;
+	int gerstnerTexResolution = 512, newGerstnerTexResolution = 512; // TODO: power
 	float minAngle = 110.0f, maxAngle = 120.0f;
 	float minAmp = 0.001f, maxAmp = 0.004f;
 	float minK = 1.0f, maxK = 30.0f; // TODO: maybe wavelength instead?
@@ -173,7 +177,7 @@ int main()
 	unsigned int fourierNormalTex =
 		Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
 
-	const int DEBUG_PHOTON_SIZE_1 = 1, DEBUG_PHOTON_SIZE_2 = 1;
+	const int DEBUG_PHOTON_SIZE_1 = 10, DEBUG_PHOTON_SIZE_2 = 10;
 	DynamicPointMesh DEBUG_DPM{ DEBUG_PHOTON_SIZE_1 * DEBUG_PHOTON_SIZE_2 * 1024, 5.0f, glm::vec4{1.0f, 0.0f, 0.0f, 1.0f} };
 
 	float timeMult = 1.0f;
@@ -211,7 +215,7 @@ int main()
 		ImGui::SliderInt("Grid count", &gridVertexCount, MIN_GRID_COUNT, MAX_GRID_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
 		if (ImGui::Button("Regenerate surface"))
 		{
-			waterPlane.Recreate(1.0f, 1.0f, gridVertexCount, gridVertexCount);
+			waterPlane.Recreate(gridVertexCount, CHUNK_VERTEX_COUNT);
 		}
 		if (ImGui::ColorEdit3("Surface color", waterColor))
 		{
@@ -479,19 +483,32 @@ int main()
 		sceneCornellOriginal.Render();
 
 		// TODO: test
+		unsigned int curDisplacementTex = useFourierWaves ? fourierDisplacementTex : gerstnerDisplacementTex;
+		unsigned int curNormalTex		= useFourierWaves ? fourierNormalTex : gerstnerNormalTex;
+
+		Renderer::UseShader(ShaderMode::ComputeSurfaceBoundingBoxes);
+		waterPlane.BindVertexSSBO(0);
+		waterPlane.BindChunkInfoSSBO(1);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, curDisplacementTex);
+		Renderer::SetInt("displacementTex", 0);
+		
+		glDispatchCompute((CHUNK_VERTEX_COUNT * CHUNK_VERTEX_COUNT) / 1024, 1, 1); // TODO: calculate based on surface chunk count
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
 		Renderer::UseShader(ShaderMode::ComputePhotonMappingCastRays);
 		sceneCornellOriginal.EnableSceneModelMatrix();
 		sceneCornellOriginal.BindSSBOs(0, 1, 2);
 
 		waterPlane.EnableModelMatrix("surfaceM");
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, useFourierWaves ? fourierDisplacementTex : gerstnerDisplacementTex);
+		glBindTexture(GL_TEXTURE_2D, curDisplacementTex);
 		Renderer::SetInt("surfaceDisplacementTex", 0);
 		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, useFourierWaves ? fourierNormalTex : gerstnerNormalTex);
+		glBindTexture(GL_TEXTURE_2D, curNormalTex);
 		Renderer::SetInt("surfaceNormalTex", 1);
 		Renderer::SetInt("surfacePatchCount", patchCount);
-		waterPlane.BindSSBOs(3, 4);
+		waterPlane.BindSSBOs(3, 4, 5);
 
 		DEBUG_DPM.BindSSBO(6);
 		glDispatchCompute(DEBUG_PHOTON_SIZE_1, DEBUG_PHOTON_SIZE_2, 1);

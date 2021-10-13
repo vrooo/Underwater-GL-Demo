@@ -14,7 +14,6 @@ struct InVertexData
 	vec3 normal;
 	float texCoordV;
 };
-
 struct InModelInfo
 {
 	uint indexOffset, indexCount;
@@ -27,6 +26,14 @@ struct InSurfaceVertexData
 {
 	vec2 position;
 	vec2 texCoord;
+};
+struct InSurfaceChunkInfo
+{
+	uint vertexOffset, vertexCount;
+	uint indexOffset, indexCount;
+	float minX, maxX;
+	float minY, maxY;
+	float minZ, maxZ;
 };
 
 layout (std430, binding = 0) buffer InVertexBuffer
@@ -55,6 +62,10 @@ layout (std430, binding = 3) buffer InSurfaceVertexBuffer
 layout (std430, binding = 4) buffer InSurfaceIndexBuffer
 {
 	unsigned int inSurfaceIndices[];
+};
+layout (std430, binding = 5) buffer InSurfaceChunkBuffer
+{
+	InSurfaceChunkInfo inSurfaceChunks[];
 };
 
 layout (std430, binding = 6) buffer OutBuffer
@@ -110,7 +121,7 @@ bool intersectBox(vec3 rayOrigin, vec3 rayDir, vec3 rayDirInv, vec3 minCorner, v
 	tmin = max(tmin, min(tz1, tz2));
     tmax = min(tmax, max(tz1, tz2));
 
-    return tmax >= tmin;
+    return tmax >= 0 && tmax >= tmin;
 }
 
 void main()
@@ -132,23 +143,34 @@ void main()
 	float t = 0.0f, bestT = 0.0f;
 	// water
 	// TODO: patch count
-//	for (uint i = 0; i < inSurfaceIndices.length(); i += 3)
-//	{
-//		InSurfaceVertexData vertexData0 = inSurfaceVertices[inSurfaceIndices[i]];
-//		InSurfaceVertexData vertexData1 = inSurfaceVertices[inSurfaceIndices[i + 1]];
-//		InSurfaceVertexData vertexData2 = inSurfaceVertices[inSurfaceIndices[i + 2]];
-//		vec3 v0 = (surfaceM * vec4(vertexData0.position.x, texture(surfaceDisplacementTex, vertexData0.texCoord).g, vertexData0.position.y, 1.0f)).xyz;
-//		vec3 v1 = (surfaceM * vec4(vertexData1.position.x, texture(surfaceDisplacementTex, vertexData1.texCoord).g, vertexData1.position.y, 1.0f)).xyz;
-//		vec3 v2 = (surfaceM * vec4(vertexData2.position.x, texture(surfaceDisplacementTex, vertexData2.texCoord).g, vertexData2.position.y, 1.0f)).xyz;
-//		if (intersectTriangle(lightPos, lightDir, v0, v1, v2, t))
-//		{
-//			if (!firstFound || t < bestT)
-//			{
-//				firstFound = true;
-//				bestT = t;
-//			}
-//		}
-//	};
+	for (uint i = 0; i < inSurfaceChunks.length(); i++)
+	{
+		InSurfaceChunkInfo chunkInfo = inSurfaceChunks[i];
+		vec3 minCorner = (surfaceM * vec4(chunkInfo.minX, chunkInfo.minY, chunkInfo.minZ, 1.0f)).xyz;
+		vec3 maxCorner = (surfaceM * vec4(chunkInfo.maxX, chunkInfo.maxY, chunkInfo.maxZ, 1.0f)).xyz;
+		if (intersectBox(lightPos, lightDir, lightDirInv, minCorner, maxCorner))
+		{
+			for (uint j = 0; j < chunkInfo.indexCount; j += 3)
+			{
+				uint index = chunkInfo.indexOffset + j;
+				InSurfaceVertexData vertexData0 = inSurfaceVertices[inSurfaceIndices[index]];
+				InSurfaceVertexData vertexData1 = inSurfaceVertices[inSurfaceIndices[index + 1]];
+				InSurfaceVertexData vertexData2 = inSurfaceVertices[inSurfaceIndices[index + 2]];
+				vec3 v0 = (surfaceM * vec4(vertexData0.position.x, texture(surfaceDisplacementTex, vertexData0.texCoord).g, vertexData0.position.y, 1.0f)).xyz;
+				vec3 v1 = (surfaceM * vec4(vertexData1.position.x, texture(surfaceDisplacementTex, vertexData1.texCoord).g, vertexData1.position.y, 1.0f)).xyz;
+				vec3 v2 = (surfaceM * vec4(vertexData2.position.x, texture(surfaceDisplacementTex, vertexData2.texCoord).g, vertexData2.position.y, 1.0f)).xyz;
+				if (intersectTriangle(lightPos, lightDir, v0, v1, v2, t))
+				{
+					if (!firstFound || t < bestT)
+					{
+						firstFound = true;
+						bestT = t;
+					}
+				}
+			}
+		}
+	}
+
 	// scene
 	for (uint i = 0; i < inModels.length(); i++)
 	{

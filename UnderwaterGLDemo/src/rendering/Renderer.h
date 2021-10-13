@@ -21,6 +21,7 @@ enum class ShaderMode
 	ComputeNormalFourier,
 	ComputeNormalSobel,
 	ComputeGerstner,
+	ComputeSurfaceBoundingBoxes,
 	ComputePhotonMappingCastRays
 };
 

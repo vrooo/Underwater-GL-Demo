@@ -4,15 +4,6 @@
 
 #include "Model.h"
 
-struct ModelInfo
-{
-	unsigned int indexOffset, indexCount;
-	float minX, maxX;
-	float minY, maxY;
-	float minZ, maxZ;
-	// TODO: material data
-};
-
 class Scene
 {
 private:

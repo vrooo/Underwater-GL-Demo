@@ -8,11 +8,26 @@
 #include "Model.h"
 #include "Vertices.h"
 
-class Plane : public Model<PositionTexSurfaceVertex>
+struct ChunkInfo
 {
-public:
-	Plane(Material mat, std::vector<PositionTexSurfaceVertex>& vert, std::vector<unsigned int>& ind);
-	void Recreate(float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ);
+	unsigned int vertexOffset, vertexCount;
+	unsigned int indexOffset, indexCount;
+	float minX, maxX;
+	float minY, maxY;
+	float minZ, maxZ;
 };
 
-Plane MakeXZPlane(Material mat, float sizeX, float sizeZ, unsigned int vertX, unsigned int vertZ);
+class Plane : public Model<PositionTexSurfaceVertex>
+{
+private:
+	GLuint ssboChunkInfo;
+public:
+	Plane(Material mat, std::vector<PositionTexSurfaceVertex>& vert, std::vector<unsigned int>& ind,
+		  std::vector<ChunkInfo>& chunkInfo);
+	void Recreate(unsigned int vertexCount, unsigned int chunkCount, float size = 1.0f);
+	using Model::BindSSBOs;
+	void BindSSBOs(int bindingVertex, int bindingIndex, int bindingChunkInfo);
+	void BindChunkInfoSSBO(int bindingChunkInfo);
+};
+
+Plane MakeXZPlane(Material mat, unsigned int vertexCount, unsigned int chunkCount, float size = 1.0f);

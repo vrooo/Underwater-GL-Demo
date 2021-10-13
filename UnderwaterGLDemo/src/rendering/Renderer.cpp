@@ -41,12 +41,13 @@ void Renderer::Init(float width, float height, glm::vec3 boundary)
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfaceDisplace.vert", "assets/shaders/phong.frag"));	// ShaderMode::SurfaceDisplacement
 	shaders.push_back(Shader::CreateShaderVF("assets/shaders/surfaceHeight.vert", "assets/shaders/phong.frag"));	// ShaderMode::SurfaceHeight
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/currentFreqWave.comp"));							// ShaderMode::ComputeFreqWave
-	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_x.comp"));									// ShaderMode::ComputeIFFTX
-	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y.comp"));									// ShaderMode::ComputeIFFTY
-	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifft_y_last.comp"));								// ShaderMode::ComputeIFFTYLastPass
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifftX.comp"));									// ShaderMode::ComputeIFFTX
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifftY.comp"));									// ShaderMode::ComputeIFFTY
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/ifftYLast.comp"));								// ShaderMode::ComputeIFFTYLastPass
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normalFourier.comp"));							// ShaderMode::ComputeNormalFourier
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/normalSobel.comp"));								// ShaderMode::ComputeNormalSobel
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/gerstner.comp"));									// ShaderMode::ComputeGerstner
+	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/surfaceBoundingBoxes.comp"));						// ShaderMode::ComputeSurfaceBoundingBoxes
 	shaders.push_back(Shader::CreateShaderCompute("assets/shaders/photonMappingCastRays.comp"));					// ShaderMode::ComputePhotonMappingCastRays
 	UseShader(ShaderMode::PassThrough);
 }
