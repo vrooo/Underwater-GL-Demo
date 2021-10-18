@@ -110,7 +110,7 @@ int main()
 	// scenes
 	float scenePosition[]{ 0.0f, 0.0f, 0.0f };
 	float sceneSize = 1.0f;
-	Scene sceneCornellOriginal{ "assets/scenes/cornell/CornellBox-Original.obj" };
+	Scene sceneCornellOriginal{ "assets/scenes/cornell/CornellBox-Sphere.obj" };
 
 	// water things
 	float waterColor[]{ 0.2f, 0.3f, 0.3f };
