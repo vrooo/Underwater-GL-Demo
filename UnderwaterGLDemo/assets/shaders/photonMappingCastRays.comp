@@ -1,5 +1,6 @@
 #version 430 core
 const float pi = 3.14159265359f;
+const float box_margin = 0.0001f;
 const float t_offset = 0.0001f;
 const float eps = 1e-7f;
 
@@ -103,6 +104,9 @@ bool intersectTriangle(vec3 rayOrigin, vec3 rayDir, vec3 v0, vec3 v1, vec3 v2, o
 bool intersectBox(vec3 rayOrigin, vec3 rayDir, vec3 rayDirInv, vec3 minCorner, vec3 maxCorner)
 {
 	// https://tavianator.com/2011/ray_box.html
+	minCorner -= box_margin;
+	maxCorner += box_margin;
+	
 	float tx1 = (minCorner.x - rayOrigin.x) * rayDirInv.x;
     float tx2 = (maxCorner.x - rayOrigin.x) * rayDirInv.x;
 
@@ -142,29 +146,43 @@ void main()
 	bool firstFound = false;
 	float t = 0.0f, bestT = 0.0f;
 	// water
-	// TODO: patch count
-	for (uint i = 0; i < inSurfaceChunks.length(); i++)
+	int patchCountHalfFloor = (surfacePatchCount - 1) / 2;
+	for (uint patchId = 0; patchId < surfacePatchCount * surfacePatchCount; patchId++)
 	{
-		InSurfaceChunkInfo chunkInfo = inSurfaceChunks[i];
-		vec3 minCorner = (surfaceM * vec4(chunkInfo.minX, chunkInfo.minY, chunkInfo.minZ, 1.0f)).xyz;
-		vec3 maxCorner = (surfaceM * vec4(chunkInfo.maxX, chunkInfo.maxY, chunkInfo.maxZ, 1.0f)).xyz;
-		if (intersectBox(lightPos, lightDir, lightDirInv, minCorner, maxCorner))
+		vec2 patchShift = (vec2(patchId % surfacePatchCount, patchId / surfacePatchCount) - patchCountHalfFloor);
+		for (uint i = 0; i < inSurfaceChunks.length(); i++)
 		{
-			for (uint j = 0; j < chunkInfo.indexCount; j += 3)
+			InSurfaceChunkInfo chunkInfo = inSurfaceChunks[i];
+			vec3 minCorner = (surfaceM * vec4(chunkInfo.minX + patchShift.x,
+											  chunkInfo.minY,
+											  chunkInfo.minZ + patchShift.y, 1.0f)).xyz;
+			vec3 maxCorner = (surfaceM * vec4(chunkInfo.maxX + patchShift.x,
+											  chunkInfo.maxY,
+											  chunkInfo.maxZ + patchShift.y, 1.0f)).xyz;
+			if (intersectBox(lightPos, lightDir, lightDirInv, minCorner, maxCorner))
 			{
-				uint index = chunkInfo.indexOffset + j;
-				InSurfaceVertexData vertexData0 = inSurfaceVertices[inSurfaceIndices[index]];
-				InSurfaceVertexData vertexData1 = inSurfaceVertices[inSurfaceIndices[index + 1]];
-				InSurfaceVertexData vertexData2 = inSurfaceVertices[inSurfaceIndices[index + 2]];
-				vec3 v0 = (surfaceM * vec4(vertexData0.position.x, texture(surfaceDisplacementTex, vertexData0.texCoord).g, vertexData0.position.y, 1.0f)).xyz;
-				vec3 v1 = (surfaceM * vec4(vertexData1.position.x, texture(surfaceDisplacementTex, vertexData1.texCoord).g, vertexData1.position.y, 1.0f)).xyz;
-				vec3 v2 = (surfaceM * vec4(vertexData2.position.x, texture(surfaceDisplacementTex, vertexData2.texCoord).g, vertexData2.position.y, 1.0f)).xyz;
-				if (intersectTriangle(lightPos, lightDir, v0, v1, v2, t))
+				for (uint j = 0; j < chunkInfo.indexCount; j += 3)
 				{
-					if (!firstFound || t < bestT)
+					uint index = chunkInfo.indexOffset + j;
+					InSurfaceVertexData vertexData0 = inSurfaceVertices[inSurfaceIndices[index]];
+					InSurfaceVertexData vertexData1 = inSurfaceVertices[inSurfaceIndices[index + 1]];
+					InSurfaceVertexData vertexData2 = inSurfaceVertices[inSurfaceIndices[index + 2]];
+					vec3 v0 = (surfaceM * vec4(vertexData0.position.x + patchShift.x,
+											   texture(surfaceDisplacementTex, vertexData0.texCoord).g,
+											   vertexData0.position.y + patchShift.y, 1.0f)).xyz;
+					vec3 v1 = (surfaceM * vec4(vertexData1.position.x + patchShift.x,
+											   texture(surfaceDisplacementTex, vertexData1.texCoord).g,
+											   vertexData1.position.y + patchShift.y, 1.0f)).xyz;
+					vec3 v2 = (surfaceM * vec4(vertexData2.position.x + patchShift.x,
+											   texture(surfaceDisplacementTex, vertexData2.texCoord).g,
+											   vertexData2.position.y + patchShift.y, 1.0f)).xyz;
+					if (intersectTriangle(lightPos, lightDir, v0, v1, v2, t))
 					{
-						firstFound = true;
-						bestT = t;
+						if (!firstFound || t < bestT)
+						{
+							firstFound = true;
+							bestT = t;
+						}
 					}
 				}
 			}
