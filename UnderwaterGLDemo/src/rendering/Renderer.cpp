@@ -83,6 +83,25 @@ void Renderer::RotateCamera(float pitch, float yaw)
 	cameraForward = glm::normalize(cameraForward);
 }
 
+void Renderer::BindTexture2D(GLenum textureUnit, GLuint texture)
+{
+	glActiveTexture(textureUnit);
+	glBindTexture(GL_TEXTURE_2D, texture);
+}
+
+void Renderer::SetTexture2D(const char* name, GLenum textureUnit, GLuint texture)
+{
+	glActiveTexture(textureUnit);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	SetInt(name, textureUnit - GL_TEXTURE0);
+}
+
+void Renderer::SetImage(const char* name, GLuint image, GLuint imageUnit, GLenum access, GLenum format)
+{
+	glBindImageTexture(imageUnit, image, 0, true, 0, access, format);
+	Renderer::SetInt(name, imageUnit);
+}
+
 void Renderer::SetInt(const char* name, int value)
 {
 	current->SetInt(name, value);
@@ -123,10 +142,10 @@ void Renderer::SetMat4(const char* name, glm::mat4& mat)
 	current->SetMat4(name, mat);
 }
 
-unsigned int Renderer::CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels,
-									   GLint filterType, GLint texWrapType)
+GLuint Renderer::CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels,
+								 GLint filterType, GLint texWrapType)
 {
-	unsigned int texture;
+	GLuint texture;
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, pixels);

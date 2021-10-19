@@ -1,5 +1,4 @@
 #include <iostream>
-#include <random>
 #include <string>
 #include <vector>
 
@@ -12,8 +11,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define cimg_use_tiff
-#include <CImg/CImg.h>
+//#define cimg_use_tiff
+//#include <CImg/CImg.h>
 
 #include "Rendering/DynamicPointMesh.h"
 #include "Rendering/Model.h"
@@ -22,7 +21,7 @@
 #include "Rendering/Shader.h"
 #include "Rendering/Renderer.h"
 
-#define SAVE_FOURIER_DEBUG false
+#include "Water/GerstnerSurface.h"
 
 const unsigned int WINDOW_WIDTH = 1600;
 const unsigned int WINDOW_HEIGHT = 900;
@@ -34,7 +33,6 @@ const float CAM_MOVE_SPEED = 10.0f;
 const float CAM_ROTATE_SPEED = 0.1f;
 
 const unsigned int CHUNK_VERTEX_COUNT = 64;
-const unsigned int MAX_WAVE_COUNT = 100;
 const unsigned int MIN_GRID_COUNT = 10;
 const unsigned int MAX_GRID_COUNT = 2000;
 const unsigned int MIN_FOURIER_POWER = 6;
@@ -42,25 +40,17 @@ const unsigned int MAX_FOURIER_POWER = 11;
 const unsigned int MAX_FOURIER_GRID_SIZE = 1 << MAX_FOURIER_POWER;
 const unsigned int COMPUTE_CHUNK = 32;
 
-const float DEPTH_INF = 100.0f;
-const float TENSION_NONE = 0.0f;
-
 const float GRAVITY = 9.8f;
 
 float lastX = WINDOW_WIDTH / 2, lastY = WINDOW_HEIGHT / 2;
-float gerstnerWaveData[MAX_WAVE_COUNT * 2][4];
 float freqWaveData[MAX_FOURIER_GRID_SIZE * MAX_FOURIER_GRID_SIZE][3];
-float debugFreqWaveData[MAX_FOURIER_GRID_SIZE * MAX_FOURIER_GRID_SIZE * 3];
 unsigned int fourierCoordLookup[(MAX_FOURIER_GRID_SIZE / 2) * (MAX_FOURIER_POWER + 1)][2];
 
 void ProcessKeyboard(GLFWwindow* window, float dt);
 void ProcessMouse(GLFWwindow* window, double posX, double posY);
-void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
-				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4]);
 void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float smallWaveLen, unsigned int fourierGridSize, float patchSize);
 void GenerateFourierCoordLookup(unsigned int fourierGridSize, int fourierPower);
 int ReverseBits(int val, int digitCount);
-void Debug_WriteImage(unsigned int fourierGridSize);
 
 int main()
 {
@@ -122,24 +112,10 @@ int main()
 	Plane waterPlane = MakeXZPlane(waterMat, gridVertexCount, CHUNK_VERTEX_COUNT);
 	waterPlane.SetScale(surfaceSize);
 
-	unsigned int surfaceBoundingBoxesTex =
+	GLuint surfaceBoundingBoxesTex =
 		Renderer::CreateTexture2D(511, 2, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr); // TODO: replace 511 with max water size or sth
 
-	int waveCount = 20, newWaveCount = 20;
-	int gerstnerTexResolution = 512, newGerstnerTexResolution = 512; // TODO: power
-	float minAngle = 110.0f, maxAngle = 120.0f;
-	float minAmp = 0.001f, maxAmp = 0.004f;
-	float minK = 1.0f, maxK = 30.0f; // TODO: maybe wavelength instead?
-	float d = 10.0f, l = 0.0f;
-	GenerateGerstnerWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, gerstnerWaveData);
-
-	unsigned int gerstnerWaveTex =
-		Renderer::CreateTexture2D(MAX_WAVE_COUNT, 2, GL_RGBA32F, GL_RGBA, GL_FLOAT, gerstnerWaveData);
-	// these two need to be regenerated each time using the correct size
-	unsigned int gerstnerDisplacementTex =
-		Renderer::CreateTexture2D(gerstnerTexResolution, gerstnerTexResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
-	unsigned int gerstnerNormalTex =
-		Renderer::CreateTexture2D(gerstnerTexResolution, gerstnerTexResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
+	GerstnerSurface gerstnerSurface{ GRAVITY };
 
 	float fourierAmp = 500.0f;
 	float fourierWindSpeed = 100.0f, fourierWindAngle = 135.0f;
@@ -147,34 +123,30 @@ int main()
 	int fourierPower = 9;
 	unsigned int fourierGridSize = 1 << fourierPower;
 	GenerateFourierWaves(fourierAmp, fourierWindSpeed, fourierWindAngle, fourierSmallWave, fourierGridSize, surfaceSize);
-	if (SAVE_FOURIER_DEBUG)
-	{
-		Debug_WriteImage(fourierGridSize);
-	}
 	GenerateFourierCoordLookup(fourierGridSize, fourierPower);
 
-	unsigned int fourierInitFreqTex =
+	GLuint fourierInitFreqTex =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGB32F, GL_RGB, GL_FLOAT, freqWaveData);
-	unsigned int fourierCurFreqTex =
+	GLuint fourierCurFreqTex =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RG32F, GL_RG, GL_FLOAT, nullptr);
-	unsigned int fourierCoordLookupTex =
+	GLuint fourierCoordLookupTex =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE / 2, MAX_FOURIER_POWER + 1, GL_RG16UI, GL_RG_INTEGER, GL_UNSIGNED_INT, fourierCoordLookup);
-	unsigned int fourierBufferTex1 =
+	GLuint fourierBufferTex1 =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RG32F, GL_RG, GL_FLOAT, nullptr);
-	unsigned int fourierBufferTex2 =
+	GLuint fourierBufferTex2 =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RG32F, GL_RG, GL_FLOAT, nullptr);
-	unsigned int fourierChoppyBufferTex1 =
+	GLuint fourierChoppyBufferTex1 =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
-	unsigned int fourierChoppyBufferTex2 =
+	GLuint fourierChoppyBufferTex2 =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
-	unsigned int fourierSlopeBufferTex1 =
+	GLuint fourierSlopeBufferTex1 =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
-	unsigned int fourierSlopeBufferTex2 =
+	GLuint fourierSlopeBufferTex2 =
 		Renderer::CreateTexture2D(MAX_FOURIER_GRID_SIZE, MAX_FOURIER_GRID_SIZE, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr);
 	// these two need to be regenerated each time using the correct size
-	unsigned int fourierDisplacementTex =
+	GLuint fourierDisplacementTex =
 		Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
-	unsigned int fourierNormalTex =
+	GLuint fourierNormalTex =
 		Renderer::CreateTexture2D(fourierGridSize, fourierGridSize, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR, GL_REPEAT);
 
 	const int DEBUG_PHOTON_SIZE_1 = 10, DEBUG_PHOTON_SIZE_2 = 10;
@@ -280,13 +252,6 @@ int main()
 			int fourierGroupSize = fourierGridSize / COMPUTE_CHUNK;
 			glDispatchCompute(fourierGroupSize, fourierGroupSize, 1);
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
-
-			if (SAVE_FOURIER_DEBUG)
-			{
-				glBindTexture(GL_TEXTURE_2D, fourierCurFreqTex);
-				glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_FLOAT, freqWaveData);
-				Debug_WriteImage(fourierGridSize);
-			}
 
 			Renderer::UseShader(ShaderMode::ComputeIFFTX);
 			glActiveTexture(GL_TEXTURE0);
@@ -409,64 +374,45 @@ int main()
 		else
 		{
 			// GERSTNER WAVES
-			Renderer::UseShader(ShaderMode::ComputeGerstner);
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, gerstnerWaveTex);
-
-			if (ImGui::SliderInt("Texture resolution", &newGerstnerTexResolution, MIN_GRID_COUNT, MAX_GRID_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp))
-			{
-				gerstnerTexResolutionChanged = true;
-			}
-			ImGui::SliderInt("Wave count", &newWaveCount, 1, MAX_WAVE_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Min angle", &minAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Max angle", &maxAngle, 0.0f, 360.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Min amplitude", &minAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Max amplitude", &maxAmp, 0.0001f, 0.1f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Min k", &minK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp); // TODO: wavelength or wind speed instead of k
-			ImGui::SliderFloat("Max k", &maxK, 0.001f, 100.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Depth", &d, 0.01f, DEPTH_INF, d == DEPTH_INF ? "Infinite" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
-			ImGui::SliderFloat("Surface tension scale", &l, TENSION_NONE, 1.0f, l == TENSION_NONE ? "None" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderInt("Texture resolution",
+							 &gerstnerSurface.textureResolution, gerstnerSurface.MIN_TEXTURE_RESOLUTION, gerstnerSurface.MAX_TEXTURE_RESOLUTION,
+							 "%d", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderInt("Wave count",
+							 &gerstnerSurface.waveCount, 1, gerstnerSurface.MAX_WAVE_COUNT, "%d",
+							 ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Min angle",
+							   &gerstnerSurface.minAngle, 0.0f, 360.0f, "%.3f",
+							   ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Max angle",
+							   &gerstnerSurface.maxAngle, 0.0f, 360.0f, "%.3f",
+							   ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Min amplitude",
+							   &gerstnerSurface.minAmplitude, 0.0001f, 0.1f, "%.4f",
+							   ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Max amplitude",
+							   &gerstnerSurface.maxAmplitude, 0.0001f, 0.1f,
+							   "%.4f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Min k",
+							   &gerstnerSurface.minK, 0.001f, 100.0f,
+							   "%.3f", ImGuiSliderFlags_AlwaysClamp); // TODO: wavelength or wind speed instead of k
+			ImGui::SliderFloat("Max k",
+							   &gerstnerSurface.maxK, 0.001f, 100.0f,
+							   "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Depth",
+							   &gerstnerSurface.depth, 0.01f, gerstnerSurface.DEPTH_INFINITE,
+							   gerstnerSurface.depth == gerstnerSurface.DEPTH_INFINITE ? "Infinite" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::SliderFloat("Surface tension scale",
+							   &gerstnerSurface.surfaceTension, gerstnerSurface.SURFACE_TENSION_NONE, 1.0f,
+							   gerstnerSurface.surfaceTension == gerstnerSurface.SURFACE_TENSION_NONE ? "None" : "%.3f", ImGuiSliderFlags_AlwaysClamp);
 
 			if (ImGui::Button("Regenerate waves"))
 			{
-				waveCount = newWaveCount;
-				GenerateGerstnerWaves(waveCount, minAngle, maxAngle, minAmp, maxAmp, minK, maxK, d, l, gerstnerWaveData);
-				//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, waveCount, 2, GL_RGBA, GL_FLOAT, gerstnerWaveData);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, gerstnerWaveData); // TODO: why can't I sub only waveCount columns?
-
-				if (gerstnerTexResolutionChanged)
-				{
-					gerstnerTexResolutionChanged = false;
-					gerstnerTexResolution = newGerstnerTexResolution;
-					gerstnerDisplacementTex =
-						Renderer::CreateTexture2D(gerstnerTexResolution, gerstnerTexResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
-					gerstnerNormalTex =
-						Renderer::CreateTexture2D(gerstnerTexResolution, gerstnerTexResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
-				}
+				gerstnerSurface.RegenerateWaveData(GRAVITY);
 			}
 
-			glBindImageTexture(0, gerstnerWaveTex, 0, true, 0, GL_READ_ONLY, GL_RGBA32F);
-			Renderer::SetInt("waveTex", 0);
-			glBindImageTexture(1, gerstnerDisplacementTex, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
-			Renderer::SetInt("displacementTex", 1);
-			glBindImageTexture(2, gerstnerNormalTex, 0, true, 0, GL_WRITE_ONLY, GL_RGBA32F);
-			Renderer::SetInt("normalTex", 2);
-
-			Renderer::SetInt("texResolution", gerstnerTexResolution);
-			Renderer::SetInt("waveCount", waveCount);
-			Renderer::SetFloat("t", simTime);
-
-			int gerstnerGroupSize = ceil((float)gerstnerTexResolution / COMPUTE_CHUNK);
-			glDispatchCompute(gerstnerGroupSize, gerstnerGroupSize, 1);
-
-			Renderer::UseShader(useDisplacement ? ShaderMode::SurfaceDisplacement : ShaderMode::SurfaceHeight);
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, gerstnerDisplacementTex);
-			Renderer::SetInt("displacementTex", 0);
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, gerstnerNormalTex);
-			Renderer::SetInt("normalTex", 1);
+			gerstnerSurface.PrepareRender(simTime, useDisplacement);
 		}
+
 		Renderer::SetInt("patchCount", patchCount);
 		waterPlane.RenderInstanced(patchCount * patchCount);
 
@@ -483,39 +429,39 @@ int main()
 		sceneCornellOriginal.Render();
 
 		// TODO: test
-		unsigned int curDisplacementTex = useFourierWaves ? fourierDisplacementTex : gerstnerDisplacementTex;
-		unsigned int curNormalTex		= useFourierWaves ? fourierNormalTex : gerstnerNormalTex;
+		//unsigned int curDisplacementTex = useFourierWaves ? fourierDisplacementTex : gerstnerDisplacementTex;
+		//unsigned int curNormalTex		= useFourierWaves ? fourierNormalTex : gerstnerNormalTex;
 
-		Renderer::UseShader(ShaderMode::ComputeSurfaceBoundingBoxes);
-		waterPlane.BindVertexSSBO(0);
-		waterPlane.BindChunkInfoSSBO(1);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, curDisplacementTex);
-		Renderer::SetInt("displacementTex", 0);
-		
-		glDispatchCompute((CHUNK_VERTEX_COUNT * CHUNK_VERTEX_COUNT) / 1024, 1, 1); // TODO: calculate based on surface chunk count
-		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+		//Renderer::UseShader(ShaderMode::ComputeSurfaceBoundingBoxes);
+		//waterPlane.BindVertexSSBO(0);
+		//waterPlane.BindChunkInfoSSBO(1);
+		//glActiveTexture(GL_TEXTURE0);
+		//glBindTexture(GL_TEXTURE_2D, curDisplacementTex);
+		//Renderer::SetInt("displacementTex", 0);
+		//
+		//glDispatchCompute((CHUNK_VERTEX_COUNT * CHUNK_VERTEX_COUNT) / 1024, 1, 1); // TODO: calculate based on surface chunk count
+		//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-		Renderer::UseShader(ShaderMode::ComputePhotonMappingCastRays);
-		sceneCornellOriginal.EnableSceneModelMatrix();
-		sceneCornellOriginal.BindSSBOs(0, 1, 2);
+		//Renderer::UseShader(ShaderMode::ComputePhotonMappingCastRays);
+		//sceneCornellOriginal.EnableSceneModelMatrix();
+		//sceneCornellOriginal.BindSSBOs(0, 1, 2);
 
-		waterPlane.EnableModelMatrix("surfaceM");
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, curDisplacementTex);
-		Renderer::SetInt("surfaceDisplacementTex", 0);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, curNormalTex);
-		Renderer::SetInt("surfaceNormalTex", 1);
-		Renderer::SetInt("surfacePatchCount", patchCount);
-		waterPlane.BindSSBOs(3, 4, 5);
+		//waterPlane.EnableModelMatrix("surfaceM");
+		//glActiveTexture(GL_TEXTURE0);
+		//glBindTexture(GL_TEXTURE_2D, curDisplacementTex);
+		//Renderer::SetInt("surfaceDisplacementTex", 0);
+		//glActiveTexture(GL_TEXTURE1);
+		//glBindTexture(GL_TEXTURE_2D, curNormalTex);
+		//Renderer::SetInt("surfaceNormalTex", 1);
+		//Renderer::SetInt("surfacePatchCount", patchCount);
+		//waterPlane.BindSSBOs(3, 4, 5);
 
-		DEBUG_DPM.BindSSBO(6);
-		glDispatchCompute(DEBUG_PHOTON_SIZE_1, DEBUG_PHOTON_SIZE_2, 1);
-		glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+		//DEBUG_DPM.BindSSBO(6);
+		//glDispatchCompute(DEBUG_PHOTON_SIZE_1, DEBUG_PHOTON_SIZE_2, 1);
+		//glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 
-		Renderer::UseShader(ShaderMode::Point);
-		DEBUG_DPM.Render();
+		//Renderer::UseShader(ShaderMode::Point);
+		//DEBUG_DPM.Render();
 		// TODO: end test
 
 		ImGui::End();
@@ -571,48 +517,6 @@ void ProcessMouse(GLFWwindow* window, double posX, double posY)
 	}
 	lastX = posX;
 	lastY = posY;
-}
-
-void GenerateGerstnerWaves(int waveCount, float minAngle, float maxAngle, float minAmp, float maxAmp, float minK, float maxK,
-				   float d, float l, float waveData[MAX_WAVE_COUNT * 2][4])
-{
-	// TODO: wave generation somewhere else
-	static std::random_device randomDevice{};
-	static std::mt19937 engine{ randomDevice() };
-
-	if (minAngle > maxAngle) maxAngle += 360.0f;
-	if (minAmp > maxAmp) std::swap(minAmp, maxAmp);
-	if (minK > maxK) std::swap(minK, maxK);
-
-	std::uniform_real_distribution<float> angleDist{ glm::radians(minAngle), glm::radians(maxAngle) };
-	std::uniform_real_distribution<float> phaseShiftDist{ glm::radians(0.0f), glm::radians(360.0f) };
-	std::uniform_real_distribution<float> ampDist{ minAmp, maxAmp };
-	std::uniform_real_distribution<float> kDist{ minK, maxK };
-
-	float baseOmega = glm::two_pi<float>();
-
-	for (int i = 0; i < waveCount; i++)
-	{
-		float angle = angleDist(engine);
-		float k = kDist(engine);
-		waveData[i][0] = cos(angle);
-		waveData[i][1] = sin(angle);
-		waveData[i][2] = k;
-		waveData[i][3] = ampDist(engine);
-		//waveData[MAX_WAVE_COUNT + i][0] = sqrt(GRAVITY * k * tanh(k * d) * (1 + k * k * l * l));
-		waveData[MAX_WAVE_COUNT + i][1] = phaseShiftDist(engine);
-
-		float omegaSq = GRAVITY * k;
-		if (d < DEPTH_INF)
-		{
-			omegaSq *= tanh(k * d);
-		}
-		if (l > TENSION_NONE)
-		{
-			omegaSq *= 1 + k * k * l * l;
-		}
-		waveData[MAX_WAVE_COUNT + i][0] = (int)(sqrt(omegaSq) / baseOmega) * baseOmega;
-	}
 }
 
 void GenerateFourierWaves(float amplitude, float windSpeed, float windAngle, float smallWaveLen, unsigned int fourierGridSize, float patchSize)
@@ -696,34 +600,4 @@ int ReverseBits(int val, int digitCount)
 		val >>= 1;
 	}
 	return res;
-}
-
-void Debug_WriteImage(unsigned int fourierGridSize)
-{
-	static const unsigned int COUNTER_LENGTH = 6;
-	static int counter = 0;
-
-	if (counter >= 1e6)
-	{
-		return;
-	}
-
-	for (int i = 0; i < fourierGridSize; i++)
-	{
-		for (int j = 0; j < fourierGridSize; j++)
-		{
-			for (int k = 0; k < 3; k++)
-			{
-				debugFreqWaveData[i + fourierGridSize * (j + fourierGridSize * k)] = k == 2 ? 0 : 128 + freqWaveData[i + fourierGridSize * j][k];
-			}
-		}
-	}
-
-	cimg_library::CImg<float> image{ debugFreqWaveData, fourierGridSize, fourierGridSize, 1, 3 };
-	std::string counterStr = std::to_string(counter);
-	std::string zeroStr = std::string( COUNTER_LENGTH - counterStr.length(), '0' );
-	std::string name = std::string{ "../../debug/img/test_" }.append(zeroStr).append(counterStr).append(".tiff");
-	image.save_tiff(name.c_str());
-
-	counter++;
 }

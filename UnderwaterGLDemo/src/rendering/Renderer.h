@@ -31,6 +31,9 @@ public:
 	static void Init(float width, float height, glm::vec3 boundary);
 	static void UseShader(ShaderMode mode);
 
+	static void BindTexture2D(GLenum textureUnit, GLuint texture);
+	static void SetTexture2D(const char* name, GLenum textureUnit, GLuint texture);
+	static void SetImage(const char* name, GLuint image, GLuint imageUnit, GLenum access, GLenum format);
 	static void SetInt(const char* name, int value);
 	static void SetUint(const char* name, unsigned int value);
 	static void SetFloat(const char* name, float value);
@@ -43,8 +46,8 @@ public:
 	static void TranslateCamera(float forward, float right, float up);
 	static void RotateCamera(float pitch, float yaw);
 
-	static unsigned int CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels,
-										GLint filterType = GL_NEAREST, GLint texWrapType = GL_CLAMP_TO_EDGE);
+	static GLuint CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels,
+								  GLint filterType = GL_NEAREST, GLint texWrapType = GL_CLAMP_TO_EDGE);
 
 private:
 	static void AddShaderIncludeDir(const char* dir);
