@@ -12,7 +12,7 @@ GerstnerSurface::GerstnerSurface(float gravity)
 {
 	GenerateWaveData(gravity);
 	waveTex =
-		Renderer::CreateTexture2D(MAX_WAVE_COUNT, 2, GL_RGBA32F, GL_RGBA, GL_FLOAT, waveData);
+		Renderer::CreateTexture2D(MAX_WAVE_COUNT, 2, GL_RGBA32F, GL_RGBA, GL_FLOAT, waveData.data());
 	// these two need to be regenerated each time using the correct size
 	displacementTex =
 		Renderer::CreateTexture2D(textureResolution, textureResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
@@ -23,62 +23,45 @@ GerstnerSurface::GerstnerSurface(float gravity)
 void GerstnerSurface::RegenerateWaveData(float gravity)
 {
 	GenerateWaveData(gravity);
-	Renderer::BindTexture2D(GL_TEXTURE0, waveTex);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, waveData); // TODO: why can't I sub only waveCount columns?
+	Renderer::SubTexture2DData(waveTex, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, waveData.data()); // TODO: why can't I sub only waveCount columns?
 
 	if (prevTextureResolution != textureResolution)
 	{
+		prevTextureResolution = textureResolution;
 		displacementTex =
 			Renderer::CreateTexture2D(textureResolution, textureResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
 		normalTex =
 			Renderer::CreateTexture2D(textureResolution, textureResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
 	}
-	prevTextureResolution = textureResolution;
 	prevWaveCount = waveCount;
-}
-
-void GerstnerSurface::PrepareRender(float simTime, bool useDisplacement)
-{
-	Renderer::UseShader(ShaderMode::ComputeGerstner);
-
-	Renderer::SetImage("waveTex", waveTex, 0, GL_READ_ONLY, GL_RGBA32F);
-	Renderer::SetImage("displacementTex", displacementTex, 1, GL_WRITE_ONLY, GL_RGBA32F);
-	Renderer::SetImage("normalTex", normalTex, 2, GL_WRITE_ONLY, GL_RGBA32F);
-
-	Renderer::SetInt("texResolution", prevTextureResolution);
-	Renderer::SetInt("waveCount", prevWaveCount);
-	Renderer::SetFloat("t", simTime);
-
-	int gerstnerGroupSize = prevTextureResolution / COMPUTE_CHUNK;
-	glDispatchCompute(gerstnerGroupSize, gerstnerGroupSize, 1);
-
-	Renderer::UseShader(useDisplacement ? ShaderMode::SurfaceDisplacement : ShaderMode::SurfaceHeight);
-	Renderer::SetTexture2D("displacementTex", GL_TEXTURE0, displacementTex);
-	Renderer::SetTexture2D("normalTex", GL_TEXTURE1, normalTex);
 }
 
 void GerstnerSurface::GenerateWaveData(float gravity)
 {
-	if (minAngle > maxAngle) maxAngle += 360.0f;
-	if (minAmplitude > maxAmplitude) std::swap(minAmplitude, maxAmplitude);
-	if (minK > maxK) std::swap(minK, maxK);
+	float curMinAngle = minAngle, curMaxAngle = maxAngle;
+	float curMinAmplitude = minAmplitude, curMaxAmplitude = maxAmplitude;
+	float curMinK = minK, curMaxK = maxK;
 
-	std::uniform_real_distribution<float> angleDist{ glm::radians(minAngle), glm::radians(maxAngle) };
-	std::uniform_real_distribution<float> phaseShiftDist{ glm::radians(0.0f), glm::radians(360.0f) };
-	std::uniform_real_distribution<float> ampDist{ minAmplitude, maxAmplitude };
-	std::uniform_real_distribution<float> kDist{ minK, maxK };
+	if (curMinAngle > curMaxAngle) curMaxAngle += 360.0f;
+	if (curMinAmplitude > curMaxAmplitude) std::swap(curMinAmplitude, curMaxAmplitude);
+	if (curMinK > curMaxK) std::swap(curMinK, curMaxK);
+
+	std::uniform_real_distribution<float> angleDist{ glm::radians(curMinAngle), glm::radians(curMaxAngle) };
+	std::uniform_real_distribution<float> ampDist{ curMinAmplitude, curMaxAmplitude };
+	std::uniform_real_distribution<float> kDist{ curMinK, curMaxK };
 
 	float baseOmega = glm::two_pi<float>();
 
 	for (int i = 0; i < waveCount; i++)
 	{
-		float angle = angleDist(engine);
-		float k = kDist(engine);
-		waveData[i][0] = cos(angle);
-		waveData[i][1] = sin(angle);
-		waveData[i][2] = k;
-		waveData[i][3] = ampDist(engine);
-		waveData[MAX_WAVE_COUNT + i][1] = phaseShiftDist(engine);
+		int index1 = 4 * i;
+		int index2 = 4 * (MAX_WAVE_COUNT + i);
+		float angle = angleDist(randomEngine);
+		float k = kDist(randomEngine);
+		waveData[index1 + 0] = cos(angle);
+		waveData[index1 + 1] = sin(angle);
+		waveData[index1 + 2] = k;
+		waveData[index1 + 3] = ampDist(randomEngine);
 
 		float omegaSq = gravity * k;
 		if (depth < DEPTH_INFINITE)
@@ -89,11 +72,28 @@ void GerstnerSurface::GenerateWaveData(float gravity)
 		{
 			omegaSq *= 1 + k * k * surfaceTension * surfaceTension;
 		}
-		waveData[MAX_WAVE_COUNT + i][0] = (int)(sqrt(omegaSq) / baseOmega) * baseOmega;
+		waveData[index2 + 0] = (int)(sqrt(omegaSq) / baseOmega) * baseOmega;
+
+		waveData[index2 + 1] = phaseShiftDist(randomEngine);
 	}
 }
 
-void GerstnerSurface::SetWaveTexture(const char* name, GLenum textureUnit)
+void GerstnerSurface::PrepareRender(float simTime, bool useDisplacement)
 {
-	Renderer::SetTexture2D(name, textureUnit, waveTex);
+	Renderer::UseShader(ShaderMode::ComputeGerstner);
+
+	Renderer::SetImage(0, "waveTex", waveTex, GL_READ_ONLY, GL_RGBA32F);
+	Renderer::SetImage(1, "displacementTex", displacementTex, GL_WRITE_ONLY, GL_RGBA32F);
+	Renderer::SetImage(2, "normalTex", normalTex, GL_WRITE_ONLY, GL_RGBA32F);
+
+	Renderer::SetInt("texResolution", prevTextureResolution);
+	Renderer::SetInt("waveCount", prevWaveCount);
+	Renderer::SetFloat("t", simTime);
+
+	int workGroupCount = prevTextureResolution / COMPUTE_WORK_GROUP_SIZE;
+	glDispatchCompute(workGroupCount, workGroupCount, 1);
+
+	Renderer::UseShader(useDisplacement ? ShaderMode::SurfaceDisplacement : ShaderMode::SurfaceHeight);
+	Renderer::SetTexture2D(GL_TEXTURE0, "displacementTex", displacementTex);
+	Renderer::SetTexture2D(GL_TEXTURE1, "normalTex", normalTex);
 }

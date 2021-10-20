@@ -1,6 +1,6 @@
 #pragma once
 
-#include <random>
+#include <vector>
 
 #include "BaseSurface.h"
 
@@ -15,17 +15,17 @@ public:
 	static const float SURFACE_TENSION_NONE;
 
 private:
-	static const int COMPUTE_CHUNK = 32;
+	static const int COMPUTE_WORK_GROUP_SIZE = 32;
 
 	int prevWaveCount = 20;
 	int prevTextureResolution = 512;
 
-	std::random_device randomDevice{};
-	std::mt19937 engine{ randomDevice() };
+	std::uniform_real_distribution<float> phaseShiftDist{ glm::radians(0.0f), glm::radians(360.0f) };
 
 	GLuint waveTex;
-	float waveData[MAX_WAVE_COUNT * 2][4] = { 0 };
+	std::vector<float> waveData = std::vector<float>(MAX_WAVE_COUNT * 2 * 4);
 	void GenerateWaveData(float gravity);
+
 public:
 	int waveCount = 20;
 	int textureResolution = 512;
@@ -37,6 +37,6 @@ public:
 
 	GerstnerSurface(float gravity);
 	void RegenerateWaveData(float gravity);
-	void PrepareRender(float simTime, bool useDisplacement);
-	void SetWaveTexture(const char* name, GLenum textureUnit);
+
+	void PrepareRender(float simTime, bool useDisplacement) override;
 };

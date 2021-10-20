@@ -9,8 +9,11 @@
 const int INFO_LOG_SIZE = 512;
 
 // helper functions - declarations
-int AttachShader(int id, const char* path, GLenum shaderType, int& success, char* infoLog);
-void LinkProgram(int id, int& success, char* infoLog);
+namespace
+{
+	int AttachShader(int id, const char* path, GLenum shaderType, int& success, char* infoLog);
+	void LinkProgram(int id, int& success, char* infoLog);
+}
 
 // class methods
 Shader Shader::CreateShaderVF(const char* vertPath, const char* fragPath)
@@ -112,40 +115,43 @@ void Shader::SetMat4(const char* name, glm::mat4& mat)
 }
 
 // helper functions - definitions
-int AttachShader(int id, const char* path, GLenum shaderType, int& success, char* infoLog)
+namespace
 {
-	std::ifstream fileStream;
-	fileStream.exceptions(std::ifstream::badbit | std::ifstream::failbit);
-	fileStream.open(path);
-
-	std::ostringstream stringStream;
-	stringStream << fileStream.rdbuf();
-	fileStream.close();
-
-	auto shaderString = stringStream.str();
-	auto shaderCode = shaderString.c_str();
-
-	unsigned int shader = glCreateShader(shaderType);
-	glShaderSource(shader, 1, &shaderCode, nullptr);
-	glCompileShader(shader);
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success)
+	int AttachShader(int id, const char* path, GLenum shaderType, int& success, char* infoLog)
 	{
-		glGetShaderInfoLog(shader, INFO_LOG_SIZE, nullptr, infoLog);
-		throw std::runtime_error(infoLog);
+		std::ifstream fileStream;
+		fileStream.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+		fileStream.open(path);
+
+		std::ostringstream stringStream;
+		stringStream << fileStream.rdbuf();
+		fileStream.close();
+
+		auto shaderString = stringStream.str();
+		auto shaderCode = shaderString.c_str();
+
+		unsigned int shader = glCreateShader(shaderType);
+		glShaderSource(shader, 1, &shaderCode, nullptr);
+		glCompileShader(shader);
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+		if (!success)
+		{
+			glGetShaderInfoLog(shader, INFO_LOG_SIZE, nullptr, infoLog);
+			throw std::runtime_error(infoLog);
+		}
+
+		glAttachShader(id, shader);
+		return shader;
 	}
 
-	glAttachShader(id, shader);
-	return shader;
-}
-
-void LinkProgram(int id, int& success, char* infoLog)
-{
-	glLinkProgram(id);
-	glGetProgramiv(id, GL_LINK_STATUS, &success);
-	if (!success)
+	void LinkProgram(int id, int& success, char* infoLog)
 	{
-		glGetProgramInfoLog(id, INFO_LOG_SIZE, nullptr, infoLog);
-		throw std::runtime_error(infoLog);
+		glLinkProgram(id);
+		glGetProgramiv(id, GL_LINK_STATUS, &success);
+		if (!success)
+		{
+			glGetProgramInfoLog(id, INFO_LOG_SIZE, nullptr, infoLog);
+			throw std::runtime_error(infoLog);
+		}
 	}
 }

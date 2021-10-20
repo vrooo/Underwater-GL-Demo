@@ -2,12 +2,18 @@
 
 #include "BaseSurface.h"
 
-void BaseSurface::SetNormalTexture(const char* name, GLenum textureUnit)
+BaseSurface::BaseSurface()
 {
-	Renderer::SetTexture2D(name, textureUnit, normalTex);
+	std::random_device randomDevice{};
+	randomEngine = std::mt19937{ randomDevice() };
 }
 
-void BaseSurface::SetDisplacementTexture(const char* name, GLenum textureUnit)
+void BaseSurface::SetNormalTexture(GLenum textureUnit, const char* name)
 {
-	Renderer::SetTexture2D(name, textureUnit, displacementTex);
+	Renderer::SetTexture2D(textureUnit, name, normalTex);
+}
+
+void BaseSurface::SetDisplacementTexture(GLenum textureUnit, const char* name)
+{
+	Renderer::SetTexture2D(textureUnit, name, displacementTex);
 }

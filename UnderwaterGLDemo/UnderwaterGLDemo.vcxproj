@@ -170,6 +170,7 @@ copy "$(ProjectDir)include\libtiff\Release\tiffxx.dll" "$(TargetDir)\tiffxx.dll"
     <ClCompile Include="src\Rendering\Scene.cpp" />
     <ClCompile Include="src\rendering\Shader.cpp" />
     <ClCompile Include="src\Water\BaseSurface.cpp" />
+    <ClCompile Include="src\Water\FourierSurface.cpp" />
     <ClCompile Include="src\Water\GerstnerSurface.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -191,6 +192,7 @@ copy "$(ProjectDir)include\libtiff\Release\tiffxx.dll" "$(TargetDir)\tiffxx.dll"
     <ClInclude Include="src\rendering\Shader.h" />
     <ClInclude Include="src\Rendering\Vertices.h" />
     <ClInclude Include="src\Water\BaseSurface.h" />
+    <ClInclude Include="src\Water\FourierSurface.h" />
     <ClInclude Include="src\Water\GerstnerSurface.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

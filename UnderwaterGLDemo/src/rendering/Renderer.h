@@ -31,9 +31,8 @@ public:
 	static void Init(float width, float height, glm::vec3 boundary);
 	static void UseShader(ShaderMode mode);
 
-	static void BindTexture2D(GLenum textureUnit, GLuint texture);
-	static void SetTexture2D(const char* name, GLenum textureUnit, GLuint texture);
-	static void SetImage(const char* name, GLuint image, GLuint imageUnit, GLenum access, GLenum format);
+	static void SetTexture2D(GLenum textureUnit, const char* name, GLuint texture);
+	static void SetImage(GLuint imageUnit, const char* name, GLuint image, GLenum access, GLenum format);
 	static void SetInt(const char* name, int value);
 	static void SetUint(const char* name, unsigned int value);
 	static void SetFloat(const char* name, float value);
@@ -48,6 +47,7 @@ public:
 
 	static GLuint CreateTexture2D(GLsizei width, GLsizei height, GLint internalFormat, GLenum format, GLenum type, const void* pixels,
 								  GLint filterType = GL_NEAREST, GLint texWrapType = GL_CLAMP_TO_EDGE);
+	static void SubTexture2DData(GLuint texture, GLint xOffset, GLint yOffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void* pixels);
 
 private:
 	static void AddShaderIncludeDir(const char* dir);

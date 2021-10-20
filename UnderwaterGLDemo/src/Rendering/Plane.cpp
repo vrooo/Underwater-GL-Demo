@@ -88,6 +88,7 @@ void CalculateXZPlane(unsigned int vertexCount, unsigned int chunkCount, float s
 					unsigned int iz = cz * verticesPerChunk + iiz;
 					vert.push_back(PositionTexSurfaceVertex{ glm::vec2{ start + ix * step, start + iz * step },
 															 glm::vec2{ (float)ix / divs, (float)iz / divs } });
+					// TODO: texCoord should use vertexCount but it leads to seams
 					if (ix < divs && iz < divs)
 					{
 						unsigned int j = getIndex(cx, cz, iix + 1, iiz + 1);

@@ -83,20 +83,14 @@ void Renderer::RotateCamera(float pitch, float yaw)
 	cameraForward = glm::normalize(cameraForward);
 }
 
-void Renderer::BindTexture2D(GLenum textureUnit, GLuint texture)
-{
-	glActiveTexture(textureUnit);
-	glBindTexture(GL_TEXTURE_2D, texture);
-}
-
-void Renderer::SetTexture2D(const char* name, GLenum textureUnit, GLuint texture)
+void Renderer::SetTexture2D(GLenum textureUnit, const char* name, GLuint texture)
 {
 	glActiveTexture(textureUnit);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	SetInt(name, textureUnit - GL_TEXTURE0);
 }
 
-void Renderer::SetImage(const char* name, GLuint image, GLuint imageUnit, GLenum access, GLenum format)
+void Renderer::SetImage(GLuint imageUnit, const char* name, GLuint image, GLenum access, GLenum format)
 {
 	glBindImageTexture(imageUnit, image, 0, true, 0, access, format);
 	Renderer::SetInt(name, imageUnit);
@@ -154,6 +148,12 @@ GLuint Renderer::CreateTexture2D(GLsizei width, GLsizei height, GLint internalFo
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texWrapType);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texWrapType);
 	return texture;
+}
+
+void Renderer::SubTexture2DData(GLuint texture, GLint xOffset, GLint yOffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void* pixels)
+{
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, xOffset, yOffset, width, height, format, type, pixels);
 }
 
 void Renderer::AddShaderIncludeDir(const char* dir)
