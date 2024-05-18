@@ -45,5 +45,5 @@ public:
 	void PrepareRender(float simTime, bool useDisplacement) override;
 
 	inline unsigned int GetNextGridSize() { return 1 << gridSizePower; }
-	inline unsigned int GetLastGridSize() { return 1 << prevGridSizePower; }
+	inline unsigned int GetPrevGridSize() { return 1 << prevGridSizePower; }
 };

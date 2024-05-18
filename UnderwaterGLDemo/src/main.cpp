@@ -11,9 +11,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-//#define cimg_use_tiff
-//#include <CImg/CImg.h>
-
 #include "Rendering/DynamicPointMesh.h"
 #include "Rendering/Model.h"
 #include "Rendering/Plane.h"
@@ -104,9 +101,6 @@ int main()
 	Plane waterPlane = MakeXZPlane(waterMat, gridVertexCount, CHUNK_VERTEX_COUNT);
 	waterPlane.SetScale(surfaceSize);
 
-	GLuint surfaceBoundingBoxesTex =
-		Renderer::CreateTexture2D(511, 2, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr); // TODO: replace 511 with max water size or sth
-
 	GerstnerSurface gerstnerSurface{ GRAVITY };
 	FourierSurface fourierSurface{ GRAVITY };
 	BaseSurface* currentSurface;
@@ -176,7 +170,7 @@ int main()
 							 fourierGridSizeString.c_str(), ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput);
 
 			ImGui::SliderFloat("Frequency amplitude", &fourierSurface.frequencyAmplitude,
-							   100.0f, 1000000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+							   1.0f, 10000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Wind speed", &fourierSurface.windSpeed,
 							   0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Wind angle", &fourierSurface.windAngle,
@@ -193,9 +187,10 @@ int main()
 			// GERSTNER WAVES
 			currentSurface = &gerstnerSurface;
 
-			ImGui::SliderInt("Texture resolution",
-							 &gerstnerSurface.textureResolution, gerstnerSurface.MIN_TEXTURE_RESOLUTION, gerstnerSurface.MAX_TEXTURE_RESOLUTION,
-							 "%d", ImGuiSliderFlags_AlwaysClamp);
+			std::string gerstnerTextureResolutionString = std::to_string(gerstnerSurface.GetNextTextureResolution());
+			ImGui::SliderInt("Texture resolution", &gerstnerSurface.textureResolutionPower,
+							 gerstnerSurface.MIN_TEXTURE_RESOLUTION_POWER, gerstnerSurface.MAX_TEXTURE_RESOLUTION_POWER,
+							 gerstnerTextureResolutionString.c_str(), ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput);
 			ImGui::SliderInt("Wave count", &gerstnerSurface.waveCount,
 							 1, gerstnerSurface.MAX_WAVE_COUNT, "%d", ImGuiSliderFlags_AlwaysClamp);
 			ImGui::SliderFloat("Min angle", &gerstnerSurface.minAngle,
@@ -241,15 +236,10 @@ int main()
 		sceneCornellOriginal.Render();
 
 		// TODO: test
-		//unsigned int curDisplacementTex = useFourierWaves ? fourierDisplacementTex : gerstnerDisplacementTex;
-		//unsigned int curNormalTex		= useFourierWaves ? fourierNormalTex : gerstnerNormalTex;
-
 		//Renderer::UseShader(ShaderMode::ComputeSurfaceBoundingBoxes);
 		//waterPlane.BindVertexSSBO(0);
 		//waterPlane.BindChunkInfoSSBO(1);
-		//glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, curDisplacementTex);
-		//Renderer::SetInt("displacementTex", 0);
+		//currentSurface->SetDisplacementTexture(GL_TEXTURE0, "displacementTex");
 		//
 		//glDispatchCompute((CHUNK_VERTEX_COUNT * CHUNK_VERTEX_COUNT) / 1024, 1, 1); // TODO: calculate based on surface chunk count
 		//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
@@ -259,16 +249,12 @@ int main()
 		//sceneCornellOriginal.BindSSBOs(0, 1, 2);
 
 		//waterPlane.EnableModelMatrix("surfaceM");
-		//glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, curDisplacementTex);
-		//Renderer::SetInt("surfaceDisplacementTex", 0);
-		//glActiveTexture(GL_TEXTURE1);
-		//glBindTexture(GL_TEXTURE_2D, curNormalTex);
-		//Renderer::SetInt("surfaceNormalTex", 1);
+		//currentSurface->SetDisplacementTexture(GL_TEXTURE0, "surfaceDisplacementTex");
+		//currentSurface->SetDisplacementTexture(GL_TEXTURE1, "surfaceNormalTex");
 		//Renderer::SetInt("surfacePatchCount", patchCount);
 		//waterPlane.BindSSBOs(3, 4, 5);
 
-		//DEBUG_DPM.BindSSBO(6);
+		//DEBUG_DPM.BindVertexSSBO(6);
 		//glDispatchCompute(DEBUG_PHOTON_SIZE_1, DEBUG_PHOTON_SIZE_2, 1);
 		//glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 

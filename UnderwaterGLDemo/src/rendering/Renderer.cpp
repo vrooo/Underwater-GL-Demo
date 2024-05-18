@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 
 Shader* Renderer::current = nullptr;
 std::vector<Shader> Renderer::shaders{};

@@ -14,6 +14,7 @@ GerstnerSurface::GerstnerSurface(float gravity)
 	waveTex =
 		Renderer::CreateTexture2D(MAX_WAVE_COUNT, 2, GL_RGBA32F, GL_RGBA, GL_FLOAT, waveData.data());
 	// these two need to be regenerated each time using the correct size
+	unsigned int textureResolution = GetNextTextureResolution();
 	displacementTex =
 		Renderer::CreateTexture2D(textureResolution, textureResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
 	normalTex =
@@ -25,9 +26,10 @@ void GerstnerSurface::RegenerateWaveData(float gravity)
 	GenerateWaveData(gravity);
 	Renderer::SubTexture2DData(waveTex, 0, 0, MAX_WAVE_COUNT, 2, GL_RGBA, GL_FLOAT, waveData.data()); // TODO: why can't I sub only waveCount columns?
 
-	if (prevTextureResolution != textureResolution)
+	if (prevTextureResolutionPower != textureResolutionPower)
 	{
-		prevTextureResolution = textureResolution;
+		prevTextureResolutionPower = textureResolutionPower;
+		unsigned int textureResolution = GetNextTextureResolution();
 		displacementTex =
 			Renderer::CreateTexture2D(textureResolution, textureResolution, GL_RGBA32F, GL_RGBA, GL_FLOAT, nullptr, GL_LINEAR);
 		normalTex =
@@ -80,6 +82,8 @@ void GerstnerSurface::GenerateWaveData(float gravity)
 
 void GerstnerSurface::PrepareRender(float simTime, bool useDisplacement)
 {
+	unsigned int prevTextureResolution = GetPrevTextureResolution();
+
 	Renderer::UseShader(ShaderMode::ComputeGerstner);
 
 	Renderer::SetImage(0, "waveTex", waveTex, GL_READ_ONLY, GL_RGBA32F);

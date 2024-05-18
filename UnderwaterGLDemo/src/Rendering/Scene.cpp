@@ -1,6 +1,8 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <string>
+#include <sstream>
 
 #include "Scene.h"
 

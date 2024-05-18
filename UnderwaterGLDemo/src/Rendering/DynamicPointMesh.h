@@ -15,5 +15,5 @@ private:
 public:
 	DynamicPointMesh(unsigned int pointCount, float pointSize, glm::vec4 color);
 	void Render(bool showOnTop = false);
-	void BindSSBO(int bindingVertex);
+	void BindVertexSSBO(int bindingVertex);
 };

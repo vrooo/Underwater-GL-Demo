@@ -17,7 +17,7 @@ FourierSurface::FourierSurface(float gravity)
 	GenerateWaveData(gravity);
 	RegenerateCoordLookup();
 
-	unsigned int gridSize = GetLastGridSize();
+	unsigned int gridSize = GetPrevGridSize();
 
 	initFreqTex =
 		Renderer::CreateTexture2D(MAX_GRID_SIZE, MAX_GRID_SIZE, GL_RGB32F, GL_RGB, GL_FLOAT, freqWaveData.data());
@@ -134,7 +134,7 @@ void FourierSurface::RegenerateCoordLookup()
 
 void FourierSurface::PrepareRender(float simTime, bool useDisplacement)
 {
-	unsigned int gridSize = GetLastGridSize();
+	unsigned int gridSize = GetPrevGridSize();
 
 	Renderer::UseShader(ShaderMode::ComputeFreqWave);
 	Renderer::SetTexture2D(GL_TEXTURE0, "freqWaveTex", initFreqTex);
